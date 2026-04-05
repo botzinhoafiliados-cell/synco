@@ -56,6 +56,57 @@ export const MOCK_MARKETPLACES: Marketplace[] = [
 ];
 
 export const MOCK_CAMPAIGNS: Campaign[] = [
-    { id: 'cp1', name: "Mega Ofertas Abril", segment_name: "Super Ofertas Geral", template_name: "Oferta Irresistível", status: "active", products_count: 15, sent_count: 12, pending_count: 3, failed_count: 0, scheduled_date: "2026-04-03T10:00:00" },
-    { id: 'cp2', name: "Flash Friday", segment_name: "Flash Sales", template_name: "Flash Sale ⚡", status: "completed", products_count: 8, sent_count: 8, pending_count: 0, failed_count: 0, completed_date: "2026-04-02T18:00:00" },
+    { id: '1', name: 'Promoção de Verão', segment_name: 'Achadinhos do Dia 🔥', template_name: 'Oferta Irresistível', status: 'active', products_count: 5, sent_count: 2, pending_count: 3, failed_count: 0, scheduled_date: '2026-04-10T10:00:00' },
+    { id: '2', name: 'Flash Sale Eletrônicos', segment_name: 'Eletrônicos em Promo', template_name: 'Flash Sale ⚡', status: 'completed', products_count: 10, sent_count: 10, pending_count: 0, failed_count: 0, completed_date: '2026-04-01T15:00:00' },
 ];
+
+export const MOCK_TEMPLATES = [
+    { id: 't1', name: "Oferta Irresistível", content: "🔥 *{name}*\n\nDe ~R$ {original_price}~ por apenas *R$ {current_price}*!\n\n💰 Economia de R$ {eco} ({discount}% OFF)\n\n👉 {link}\n\n⏰ Corre que acaba rápido!" },
+    { id: 't2', name: "Flash Sale ⚡", content: "⚡ FLASH SALE: {name}\n\nDe: R$ {original_price}\nPor: R$ {current_price}\n\nLink: {link}" },
+    { id: 't3', name: "Curto & Direto", content: "🔥 {name}\n💰 R$ {current_price}\n👉 {link}" },
+];
+
+export const MOCK_SEND_QUEUE = [
+    { id: 'q1', product_name: 'Fone Bluetooth TWS', segment: 'Promoções Gerais', groups: 12, status: 'sending', time: 'Agora' },
+    { id: 'q2', product_name: 'Kit Panos Microfibra', segment: 'Casa & Cia', groups: 5, status: 'pending', time: 'Em 2 min' },
+    { id: 'q3', product_name: 'Relógio Digital LED', segment: 'Esportes', groups: 8, status: 'scheduled', time: '14:30' },
+];
+
+export const MOCK_PROCESSED = [
+    { 
+        id: 'p1', 
+        name: "Fone Bluetooth TWS Pro Max", 
+        marketplace: "Shopee", 
+        original_price: 189.90, 
+        current_price: 49.90, 
+        discount_percent: 74, 
+        commission_percent: 12, 
+        coupon: "TECH10", 
+        image_url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop", 
+        affiliate_link: "https://shope.ee/abc123?af=user_shopee_123", 
+        text: "🔥 *Fone Bluetooth TWS Pro Max*\n\nDe ~R$ 189,90~ por apenas *R$ 49,90*!\n\n💰 Economia de R$ 140,00 (74% OFF)\n\n🎟️ Cupom: *TECH10*\n\n👉 https://shope.ee/abc123?af=user_shopee_123\n\n⏰ Corre que acaba rápido!" 
+    },
+    { 
+        id: 'p2', 
+        name: "Organizador Maquiagem Acrílico 360°", 
+        marketplace: "Shopee", 
+        original_price: 149.90, 
+        current_price: 59.90, 
+        discount_percent: 60, 
+        commission_percent: 18, 
+        coupon: "BELEZA15", 
+        image_url: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=200&h=200&fit=crop", 
+        affiliate_link: "https://shope.ee/xyz456?af=user_shopee_123", 
+        text: "💄 *Organizador Maquiagem Acrílico 360°*\n\nDe ~R$ 149,90~ por *R$ 59,90*!\n\n🎟️ Cupom: *BELEZA15*\n\n🔗 https://shope.ee/xyz456?af=user_shopee_123\n\n🚀 Aproveite!" 
+    },
+];
+
+export const STATUS_CONFIG: Record<string, { label: string, color: string }> = {
+    active: { label: 'Ativo', color: 'green' },
+    inactive: { label: 'Inativo', color: 'red' },
+    pending: { label: 'Pendente', color: 'yellow' },
+    completed: { label: 'Concluído', color: 'blue' },
+    sending: { label: 'Enviando', color: 'purple' },
+    scheduled: { label: 'Agendado', color: 'blue' },
+    failed: { label: 'Falhou', color: 'red' },
+};

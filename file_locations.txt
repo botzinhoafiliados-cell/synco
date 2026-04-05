@@ -1,0 +1,2 @@
+﻿C:\Users\esaur_4zg16wg\Desktop\SYNCO\src\components\shared\AIQuickHelper.tsx
+C:\Users\esaur_4zg16wg\Desktop\SYNCO\src\contexts\SelectedProductsContext.tsx

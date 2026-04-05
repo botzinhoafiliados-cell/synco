@@ -23,4 +23,5 @@ export interface Group {
     is_destination: boolean;
     sends_received: number;
     is_monitored: boolean;
+    platform?: string; // Adicionado para compatibilidade com mock
 }
