@@ -1,0 +1,42 @@
+﻿src/app/(dashboard)/automacoes/page.tsx(4,22): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+src/app/(dashboard)/automacoes/page.tsx(5,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+src/app/(dashboard)/automacoes/page.tsx(6,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+src/app/(dashboard)/automacoes/page.tsx(7,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+src/app/(dashboard)/automacoes/page.tsx(8,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+src/app/(dashboard)/automacoes/page.tsx(9,24): error TS2307: Cannot find module '@/components/ui/switch' or its corresponding type declarations.
+src/app/(dashboard)/automacoes/page.tsx(10,79): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+src/app/(dashboard)/automacoes/page.tsx(11,80): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+src/app/(dashboard)/automacoes/page.tsx(12,90): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+src/app/(dashboard)/automacoes/page.tsx(13,24): error TS2306: File 'C:/Users/esaur_4zg16wg/Desktop/SYNCO/src/components/shared/PageHeader.tsx' is not a module.
+src/app/(dashboard)/automacoes/page.tsx(14,25): error TS2306: File 'C:/Users/esaur_4zg16wg/Desktop/SYNCO/src/components/shared/StatusBadge.tsx' is not a module.
+src/app/(dashboard)/automacoes/page.tsx(220,96): error TS7006: Parameter 'v' implicitly has an 'any' type.
+src/app/(dashboard)/automacoes/page.tsx(230,93): error TS7006: Parameter 'v' implicitly has an 'any' type.
+src/app/(dashboard)/automacoes/page.tsx(241,171): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/app/(dashboard)/automacoes/page.tsx(242,180): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/app/(dashboard)/automacoes/page.tsx(246,178): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/app/(dashboard)/automacoes/page.tsx(247,176): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/app/(dashboard)/automacoes/page.tsx(264,101): error TS7006: Parameter 'v' implicitly has an 'any' type.
+src/app/(dashboard)/automacoes/page.tsx(303,123): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/app/(dashboard)/automacoes/page.tsx(312,143): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/app/(dashboard)/campanhas/page.tsx(4,22): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+src/app/(dashboard)/campanhas/page.tsx(5,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+src/app/(dashboard)/campanhas/page.tsx(6,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+src/app/(dashboard)/campanhas/page.tsx(7,79): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+src/app/(dashboard)/campanhas/page.tsx(8,66): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+src/app/(dashboard)/campanhas/page.tsx(9,45): error TS2307: Cannot find module '@/components/ui/tabs' or its corresponding type declarations.
+src/app/(dashboard)/campanhas/page.tsx(10,90): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+src/app/(dashboard)/campanhas/page.tsx(11,26): error TS2307: Cannot find module '@/components/ui/progress' or its corresponding type declarations.
+src/app/(dashboard)/campanhas/page.tsx(12,24): error TS2306: File 'C:/Users/esaur_4zg16wg/Desktop/SYNCO/src/components/shared/PageHeader.tsx' is not a module.
+src/app/(dashboard)/campanhas/page.tsx(13,25): error TS2306: File 'C:/Users/esaur_4zg16wg/Desktop/SYNCO/src/components/shared/StatusBadge.tsx' is not a module.
+src/app/(dashboard)/monitoramento/page.tsx(4,22): error TS2307: Cannot find module '@/components/ui/card' or its corresponding type declarations.
+src/app/(dashboard)/monitoramento/page.tsx(5,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+src/app/(dashboard)/monitoramento/page.tsx(6,23): error TS2307: Cannot find module '@/components/ui/badge' or its corresponding type declarations.
+src/app/(dashboard)/monitoramento/page.tsx(7,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+src/app/(dashboard)/monitoramento/page.tsx(8,23): error TS2307: Cannot find module '@/components/ui/label' or its corresponding type declarations.
+src/app/(dashboard)/monitoramento/page.tsx(9,24): error TS2307: Cannot find module '@/components/ui/switch' or its corresponding type declarations.
+src/app/(dashboard)/monitoramento/page.tsx(10,79): error TS2307: Cannot find module '@/components/ui/select' or its corresponding type declarations.
+src/app/(dashboard)/monitoramento/page.tsx(11,80): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+src/app/(dashboard)/monitoramento/page.tsx(12,90): error TS2307: Cannot find module '@/components/ui/dropdown-menu' or its corresponding type declarations.
+src/app/(dashboard)/monitoramento/page.tsx(13,24): error TS2306: File 'C:/Users/esaur_4zg16wg/Desktop/SYNCO/src/components/shared/PageHeader.tsx' is not a module.
+src/app/(dashboard)/monitoramento/page.tsx(14,25): error TS2306: File 'C:/Users/esaur_4zg16wg/Desktop/SYNCO/src/components/shared/StatusBadge.tsx' is not a module.
+src/app/(dashboard)/monitoramento/page.tsx(136,43): error TS7006: Parameter 'e' implicitly has an 'any' type.

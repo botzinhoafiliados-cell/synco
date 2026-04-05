@@ -4,3 +4,6 @@ export * from './destination-list';
 export * from './marketplace';
 export * from './campaign';
 export * from './user';
+export * from './monitoring';
+export * from './automation';
+export * from './template';

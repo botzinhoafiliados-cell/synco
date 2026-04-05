@@ -4,8 +4,108 @@ import {
     Channel, 
     DestinationList, 
     Marketplace, 
-    Campaign 
+    Campaign,
+    Template,
+    Monitoring,
+    Automation
 } from '@/types';
+
+// ... (existing constants)
+
+export const MOCK_TEMPLATES: Template[] = [
+    { name: "Oferta Irresistível", content: "Confira essa oferta: {product_name} por apenas {price}!", tags: ["conversão", "limpo"], is_default: true },
+    { name: "Flash Sale ⚡", content: "CORRE! ⚡ {product_name} com {discount}% de desconto!", tags: ["urgência", "flash"], is_default: false },
+    { name: "Review Sincero", content: "Testamos o {product_name} e o preço está imbatível hoje.", tags: ["autoridade"], is_default: false },
+];
+
+export const MOCK_MONITORINGS: Monitoring[] = [
+    { 
+        id: 'm1', 
+        source_group: 'Ofertas Flash ⚡', 
+        source_channel: 'Telegram Ofertas', 
+        dest_segments: ['Promoções Gerais'], 
+        template: 'Oferta Irresistível', 
+        min_score: 70, 
+        marketplaces: ['Shopee', 'Amazon'], 
+        auto_send: true, 
+        require_review: false, 
+        no_repeat_hours: 24, 
+        status: 'active', 
+        total_intercepted: 1250, 
+        total_sent: 840 
+    },
+    { 
+        id: 'm2', 
+        source_group: 'Dicas de Casa', 
+        source_channel: 'WhatsApp', 
+        dest_segments: ['Promoções Gerais'], 
+        template: 'Flash Sale ⚡', 
+        min_score: 85, 
+        marketplaces: ['Shopee'], 
+        auto_send: false, 
+        require_review: true, 
+        no_repeat_hours: 48, 
+        status: 'paused', 
+        total_intercepted: 450, 
+        total_sent: 120 
+    },
+];
+
+export const MOCK_MONITORING_ANALYTICS = {
+    activeLinks: 124,
+    topSourceGroups: [
+        { name: 'Ofertas Flash ⚡', count: 840 },
+        { name: 'Dicas de Casa', count: 320 },
+        { name: 'Tech Promo', count: 150 },
+    ],
+    hourlyData: [
+        { hour: '08:00', intercepted: 40, sent: 30 },
+        { hour: '10:00', intercepted: 120, sent: 80 },
+        { hour: '12:00', intercepted: 180, sent: 110 },
+        { hour: '14:00', intercepted: 150, sent: 90 },
+        { hour: '16:00', intercepted: 110, sent: 70 },
+        { hour: '18:00', intercepted: 160, sent: 120 },
+        { hour: '20:00', intercepted: 90, sent: 60 },
+    ],
+    top5Items: [
+        { name: 'Fone Bluetooth Pro', count: 45 },
+        { name: 'Kit Cozinha 10pçs', count: 38 },
+        { name: 'Air Fryer 4L', count: 32 },
+        { name: 'Relógio Digital', count: 28 },
+        { name: 'Mouse Gamer RGB', count: 25 },
+    ]
+};
+
+export const MOCK_AUTOMATIONS: Automation[] = [
+    { 
+        name: "Eletrônicos com Cupom", 
+        saved_filter_name: 'Filtro personalizado', 
+        min_score: 80, 
+        max_products: 5, 
+        frequency: 'hourly', 
+        segment_name: 'Promoções Gerais', 
+        template_name: 'Oferta Irresistível', 
+        status: 'active', 
+        no_repeat_hours: 24, 
+        total_runs: 142, 
+        total_products_sent: 650, 
+        last_run: "2026-04-03T15:00:00" 
+    },
+    { 
+        name: "Flash Sales Madrugada", 
+        saved_filter_name: 'Alta Oportunidade', 
+        min_score: 90, 
+        max_products: 10, 
+        frequency: 'daily', 
+        segment_name: 'Super Ofertas Geral', 
+        template_name: 'Flash Sale ⚡', 
+        status: 'paused', 
+        no_repeat_hours: 12, 
+        total_runs: 28, 
+        total_products_sent: 210, 
+        last_run: "2026-04-02T03:00:00" 
+    },
+];
 
 // Mock data for SYNCO - Migrado do botBase
 
@@ -59,3 +159,70 @@ export const MOCK_CAMPAIGNS: Campaign[] = [
     { id: 'cp1', name: "Mega Ofertas Abril", segment_name: "Super Ofertas Geral", template_name: "Oferta Irresistível", status: "active", products_count: 15, sent_count: 12, pending_count: 3, failed_count: 0, scheduled_date: "2026-04-03T10:00:00" },
     { id: 'cp2', name: "Flash Friday", segment_name: "Flash Sales", template_name: "Flash Sale ⚡", status: "completed", products_count: 8, sent_count: 8, pending_count: 0, failed_count: 0, completed_date: "2026-04-02T18:00:00" },
 ];
+
+export const CATEGORY_LABELS: Record<string, string> = {
+    eletronicos: "Eletrônicos",
+    casa_cozinha: "Casa & Cozinha",
+    moda: "Moda",
+    beleza: "Beleza",
+    esportes: "Esportes",
+    brinquedos: "Brinquedos",
+    automotivo: "Automotivo",
+    pets: "Pets",
+    saude: "Saúde",
+    papelaria: "Papelaria",
+    ferramentas: "Ferramentas",
+    alimentos: "Alimentos",
+};
+
+export const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+    active: { label: "Ativo", color: "green" },
+    inactive: { label: "Inativo", color: "red" },
+    paused: { label: "Pausado", color: "yellow" },
+    draft: { label: "Rascunho", color: "blue" },
+    scheduled: { label: "Agendado", color: "blue" },
+    completed: { label: "Concluído", color: "green" },
+    error: { label: "Com Erro", color: "red" },
+    expired: { label: "Expirado", color: "red" },
+    sending: { label: "Enviando", color: "blue" },
+    pending: { label: "Pendente", color: "yellow" },
+    failed: { label: "Falhou", color: "red" },
+};
+
+export const CTA_LIBRARY: Record<string, string[]> = {
+    urgencia: [
+        "⏰ Corre que acaba rápido!",
+        "🔥 Últimas unidades disponíveis!",
+        "⚡ Oferta por tempo LIMITADO!",
+        "🚨 Não perca essa oportunidade!",
+        "⏳ Restam poucas unidades!",
+    ],
+    economia: [
+        "💰 Economize agora!",
+        "🤑 Menor preço do mercado!",
+        "💸 Preço de banana!",
+        "🏷️ Desconto imperdível!",
+        "✨ Qualidade por menos!",
+    ],
+    cupom: [
+        "🎟️ Use o cupom e economize ainda mais!",
+        "🏷️ Cupom exclusivo aplicado!",
+        "💳 Desconto extra com cupom!",
+        "🎁 Cupom + Frete Grátis!",
+        "🔖 Cupom válido por pouco tempo!",
+    ],
+    escassez: [
+        "🔥 Últimas unidades!",
+        "❗ Quase esgotando!",
+        "⚠️ Estoque limitadíssimo!",
+        "🏃 Corra antes que acabe!",
+        "💨 Voando do estoque!",
+    ],
+    mais_vendidos: [
+        "🏆 Mais vendido da semana!",
+        "⭐ Favorito dos clientes!",
+        "📈 Em alta! Todos comprando!",
+        "👑 Top vendas da semana!",
+        "🎯 Escolha certeira!",
+    ],
+};
