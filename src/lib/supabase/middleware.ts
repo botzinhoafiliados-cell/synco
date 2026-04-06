@@ -27,10 +27,8 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // IMPORTANTE: Não injetar lógica de proteção de rotas aqui.
-  // Este arquivo deve apenas gerenciar a atualização do token de sessão.
-  // A proteção deve ser feita no middleware.ts da raiz.
-  await supabase.auth.getUser();
+  // 3. Verificar o usuário (necessário para persistência da sessão e proteção de rotas no middleware)
+  const { data: { user } } = await supabase.auth.getUser();
 
-  return supabaseResponse;
+  return { supabaseResponse, user };
 }

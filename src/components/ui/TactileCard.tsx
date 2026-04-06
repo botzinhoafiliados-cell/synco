@@ -13,7 +13,7 @@ const TactileCard = React.forwardRef<HTMLDivElement, TactileCardProps>(
         className={cn(
           "rounded-2xl bg-anthracite-surface transition-all duration-300",
           variant === "elevated" ? "shadow-skeuo-elevated" : "shadow-skeuo-flat",
-          "border-none", // No-Line rule
+          "border-none glass-edge", // No-Line rule + Glass depth
           className
         )}
         {...props}

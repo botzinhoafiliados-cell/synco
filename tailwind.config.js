@@ -11,6 +11,7 @@ module.exports = {
       fontFamily: {
         inter: ['Inter', 'sans-serif'],
         sans: ['Inter', 'sans-serif'],
+        headline: ['Space Grotesk', 'Inter', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',

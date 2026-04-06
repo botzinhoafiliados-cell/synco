@@ -29,7 +29,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <SelectedProductsProvider>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-deep-void">
 
         {/* Mobile overlay */}
         {mobileMenuOpen && (
@@ -56,7 +56,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         >
           <Topbar onMobileMenuToggle={() => setMobileMenuOpen((o) => !o)} />
 
-          <main className="p-5 pt-4 min-h-[calc(100vh-56px)]">
+          <main className="pt-20 px-8 pb-8 min-h-[calc(100vh-64px)]">
             {children}
           </main>
         </div>

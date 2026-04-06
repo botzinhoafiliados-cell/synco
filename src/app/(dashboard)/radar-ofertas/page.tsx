@@ -4,7 +4,9 @@
 import React, { useState } from 'react';
 import PageHeader from '@/components/shared/PageHeader';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { KineticButton } from '@/components/ui/KineticButton';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   Zap, 
   ShoppingCart, 
@@ -13,7 +15,11 @@ import {
   List, 
   ArrowUpDown,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  SlidersHorizontal,
+  SendHorizonal,
+  CheckSquare,
+  X
 } from 'lucide-react';
 import { 
   DropdownMenu, 
@@ -42,9 +48,10 @@ export default function RadarOfertasPage() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('score_desc');
   const [filters, setFilters] = useState<ProductFilter>({});
+  const [showFilters, setShowFilters] = useState(false);
 
   // Context & Hooks
-  const { toggleProduct, isSelected, count: cartCount } = useSelectedProducts();
+  const { toggleProduct, isSelected, count: cartCount, selectedProducts, clearProducts } = useSelectedProducts();
   const toggleFavoriteMutation = useToggleFavorite();
   
   // Data Fetching
@@ -52,7 +59,6 @@ export default function RadarOfertasPage() {
     ...filters,
     marketplace: marketplace === 'all' ? undefined : marketplace,
     search: search || undefined,
-    // Note: service handles offerType mapping internally or we can map it here
   });
 
   const handleResetFilters = () => {
@@ -69,12 +75,43 @@ export default function RadarOfertasPage() {
         description="Monitore e selecione as melhores oportunidades dos marketplaces em tempo real."
         actions={
           <div className="flex items-center gap-3">
+            {/* Toggle Filtros — Base44 pattern */}
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className={cn(
+                "h-10 px-4 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
+                showFilters 
+                  ? "bg-kinetic-orange/10 text-kinetic-orange shadow-skeuo-pressed" 
+                  : "bg-white/5 text-white/50 hover:text-white shadow-skeuo-flat"
+              )}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <SlidersHorizontal className="w-4 h-4 mr-2" />
+              Filtros
+            </Button>
+
+            {/* Enviar selecionados — Base44 pattern */}
+            {selectedProducts.length > 0 && (
+              <Link href="/envio-rapido">
+                <KineticButton className="h-10 px-6">
+                  <SendHorizonal className="w-4 h-4 mr-2" />
+                  Enviar selecionados ({selectedProducts.length})
+                </KineticButton>
+              </Link>
+            )}
+
+            {/* Carrinho */}
             <Link href="/carrinho-ofertas">
-              <Button className="relative bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-tight h-10 px-6 shadow-lg shadow-primary/20">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="relative h-10 px-4 text-[10px] font-black uppercase tracking-widest bg-white/5 text-white/50 hover:text-white rounded-xl shadow-skeuo-flat"
+              >
                 <ShoppingCart className="w-4 h-4 mr-2" />
                 Carrinho
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-background shadow-sm">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-deep-void shadow-sm">
                     {cartCount}
                   </span>
                 )}
@@ -84,16 +121,16 @@ export default function RadarOfertasPage() {
         }
       />
 
-      {/* Toolbar & Tabs */}
+      {/* Toolbar & Tabs — Refactored for better responsiveness to prevent horizontal overflow */}
       <div className="space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <Tabs value={marketplace} onValueChange={setMarketplace} className="w-full lg:w-auto">
-            <TabsList className="bg-muted/50 p-1 h-11">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-1">
+          <Tabs value={marketplace} onValueChange={setMarketplace} className="w-full lg:w-auto overflow-x-auto no-scrollbar pb-1">
+            <TabsList className="bg-deep-void shadow-skeuo-pressed p-1.5 h-12 rounded-2xl border-none min-w-max">
               {MARKETPLACE_TABS.map(tab => (
                 <TabsTrigger 
                   key={tab.value} 
                   value={tab.value}
-                  className="px-4 text-[10px] font-bold uppercase tracking-tight data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  className="px-6 text-[10px] font-black uppercase tracking-widest transition-all duration-300 data-[state=active]:bg-white/5 data-[state=active]:text-kinetic-orange data-[state=active]:shadow-skeuo-flat rounded-xl"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -101,12 +138,12 @@ export default function RadarOfertasPage() {
             </TabsList>
           </Tabs>
 
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 md:w-64">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full lg:w-auto">
+            <div className="relative flex-1 md:w-64 min-w-[200px]">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/20" />
               <Input
                 placeholder="Buscar ofertas..."
-                className="pl-9 h-10 text-xs font-medium bg-muted/30 border-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="pl-10 h-11 text-[10px] font-black uppercase tracking-widest border-none bg-deep-void shadow-skeuo-pressed text-white/80 placeholder:text-white/10 focus-visible:ring-1 focus-visible:ring-kinetic-orange/50 rounded-xl w-full"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -114,17 +151,18 @@ export default function RadarOfertasPage() {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-10 px-3 text-[10px] font-bold uppercase border-border/50">
-                  <ArrowUpDown className="w-3.5 h-3.5 mr-2" />
-                  {SORT_OPTIONS.find(o => o.value === sortBy)?.label || 'Ordenar'}
+                <Button variant="ghost" size="sm" className="h-11 px-4 text-[10px] font-black uppercase tracking-widest bg-white/5 border-none rounded-xl shadow-skeuo-flat hover:bg-white/10 transition-all shrink-0">
+                  <ArrowUpDown className="w-3.5 h-3.5 mr-2 text-kinetic-orange" />
+                  <span className="hidden sm:inline">{SORT_OPTIONS.find(o => o.value === sortBy)?.label || 'Ordenar'}</span>
+                  <span className="sm:hidden">Ord.</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="text-[10px] font-bold uppercase text-muted-foreground px-2 py-1.5">Opções de Ordenação</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+              <DropdownMenuContent align="end" className="w-56 bg-anthracite-surface border-none shadow-skeuo-elevated rounded-xl p-1 z-50">
+                <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-white/20 px-3 py-2">Ordenação</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-white/5 mx-2" />
                 <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
                   {SORT_OPTIONS.map(opt => (
-                    <DropdownMenuRadioItem key={opt.value} value={opt.value} className="text-xs font-medium">
+                    <DropdownMenuRadioItem key={opt.value} value={opt.value} className="text-xs font-bold uppercase tracking-widest py-3 rounded-lg hover:bg-white/5">
                       {opt.label}
                     </DropdownMenuRadioItem>
                   ))}
@@ -132,11 +170,14 @@ export default function RadarOfertasPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="flex items-center border border-border/50 rounded-lg p-1 bg-muted/20">
+            <div className="flex items-center rounded-2xl p-1.5 bg-deep-void shadow-skeuo-pressed h-11 shrink-0">
               <Button 
                 variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
                 size="sm" 
-                className="h-8 w-8 p-0" 
+                className={cn(
+                  "h-8 w-8 p-0 rounded-lg transition-all",
+                  viewMode === 'grid' ? "bg-white/10 text-kinetic-orange shadow-skeuo-flat" : "text-white/20 hover:text-white"
+                )} 
                 onClick={() => setViewMode('grid')}
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -144,7 +185,10 @@ export default function RadarOfertasPage() {
               <Button 
                 variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
                 size="sm" 
-                className="h-8 w-8 p-0" 
+                className={cn(
+                  "h-8 w-8 p-0 rounded-lg transition-all",
+                  viewMode === 'list' ? "bg-white/10 text-kinetic-orange shadow-skeuo-flat" : "text-white/20 hover:text-white"
+                )} 
                 onClick={() => setViewMode('list')}
               >
                 <List className="w-4 h-4" />
@@ -154,12 +198,12 @@ export default function RadarOfertasPage() {
         </div>
 
         <Tabs value={offerType} onValueChange={setOfferType} className="w-full">
-          <TabsList className="bg-transparent border-b border-border w-full justify-start rounded-none h-auto p-0 gap-8">
+          <TabsList className="bg-transparent border-b border-white/5 w-full justify-start rounded-none h-auto p-0 gap-4 sm:gap-8 overflow-x-auto no-scrollbar">
             {OFFER_TABS.map(tab => (
               <TabsTrigger 
                 key={tab.value} 
                 value={tab.value}
-                className="px-0 py-3 text-[10px] font-black uppercase tracking-widest rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary transition-all"
+                className="px-0 py-3 text-[10px] font-black uppercase tracking-widest rounded-none border-b-2 border-transparent data-[state=active]:border-kinetic-orange data-[state=active]:bg-transparent data-[state=active]:text-kinetic-orange transition-all whitespace-nowrap"
               >
                 {tab.label}
               </TabsTrigger>
@@ -168,71 +212,92 @@ export default function RadarOfertasPage() {
         </Tabs>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Filters Sidebar */}
-        <aside className="lg:col-span-1 space-y-4">
+      {/* Filtros Avançados — Inline, ocultos por padrão (Base44 pattern) */}
+      {showFilters && (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
           <RadarFilters 
             filters={filters} 
             onFilterChange={setFilters} 
             onReset={handleResetFilters} 
           />
-          
-          <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10 relative overflow-hidden group">
-            <Zap className="absolute -right-2 -bottom-2 w-24 h-24 text-primary/5 group-hover:scale-110 transition-transform duration-500" />
-            <h4 className="text-xs font-black uppercase tracking-tight text-primary mb-1">Dica de Especialista</h4>
-            <p className="text-[10px] text-muted-foreground leading-relaxed relative z-10">
-              Produtos com <b>Opportunity Score &gt; 90</b> têm 3.5x mais chances de conversão imediata. Fique de olho neles!
-            </p>
-          </div>
-        </aside>
+        </div>
+      )}
 
-        {/* Product Grid */}
-        <main className="lg:col-span-3">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 className="w-10 h-10 text-primary animate-spin" />
-              <p className="text-sm font-bold uppercase tracking-tight text-muted-foreground">Sintonizando as melhores ofertas...</p>
-            </div>
-          ) : isError ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
-                <AlertCircle className="w-8 h-8 text-red-500" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold uppercase tracking-tight">Ocorreu um erro</h3>
-                <p className="text-sm text-muted-foreground">Não foi possível carregar as ofertas. Tente novamente em instantes.</p>
-              </div>
-              <Button variant="outline" onClick={() => window.location.reload()}>Recarregar Página</Button>
-            </div>
-          ) : products?.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center text-muted-foreground border-2 border-dashed border-border/50 rounded-2xl">
-              <ShoppingCart className="w-12 h-12 opacity-20" />
-              <div>
-                <h3 className="text-lg font-bold uppercase tracking-tight">Nenhuma oferta encontrada</h3>
-                <p className="text-sm">Tente ajustar seus filtros ou mudar a categoria.</p>
-              </div>
-              <Button variant="link" onClick={handleResetFilters}>Limpar todos os filtros</Button>
-            </div>
-          ) : (
-            <div className={cn(
-              "grid gap-4",
-              viewMode === 'grid' 
-                ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" 
-                : "grid-cols-1"
-            )}>
-              {products?.map(product => (
-                <ProductCard 
-                  key={product.id}
-                  product={product}
-                  isSelected={isSelected(product.id)}
-                  onSelect={toggleProduct}
-                  onToggleFavorite={(id, fav) => toggleFavoriteMutation.mutate({ id, isFavorite: fav })}
-                />
-              ))}
+      {/* Barra de Contexto Operacional — Base44 pattern */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-4">
+          <p className="text-xs text-white/40 font-bold uppercase tracking-widest">
+            <span className="text-white/80 font-black font-headline">{products?.length || 0}</span> produtos
+          </p>
+          {selectedProducts.length > 0 && (
+            <div className="flex items-center gap-3">
+              <Badge className="bg-kinetic-orange/10 text-kinetic-orange border-none text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-skeuo-flat">
+                <CheckSquare className="w-3 h-3 mr-1.5" />
+                {selectedProducts.length} selecionados
+              </Badge>
+              <button 
+                onClick={clearProducts} 
+                className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-red-500 transition-colors flex items-center gap-1"
+              >
+                <X className="w-3 h-3" /> Limpar
+              </button>
             </div>
           )}
-        </main>
+        </div>
+
+        {/* Info de seleção persistente — only show once */}
+        {selectedProducts.length === 0 && (
+          <div className="flex items-center gap-2 text-[10px] text-emerald-500/50 font-bold uppercase tracking-widest">
+            <CheckSquare className="w-3 h-3" />
+            Seleção persistente entre abas
+          </div>
+        )}
       </div>
+
+      {/* Product Grid — Full width, restored to 4 cols */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <Loader2 className="w-10 h-10 text-kinetic-orange animate-spin" />
+          <p className="text-sm font-bold uppercase tracking-tight text-white/30">Sintonizando as melhores ofertas...</p>
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold uppercase tracking-tight">Ocorreu um erro</h3>
+            <p className="text-sm text-white/30">Não foi possível carregar as ofertas. Tente novamente em instantes.</p>
+          </div>
+          <Button variant="outline" onClick={() => window.location.reload()}>Recarregar Página</Button>
+        </div>
+      ) : products?.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center text-white/30 border-2 border-dashed border-white/5 rounded-2xl">
+          <ShoppingCart className="w-12 h-12 opacity-20" />
+          <div>
+            <h3 className="text-lg font-bold uppercase tracking-tight">Nenhuma oferta encontrada</h3>
+            <p className="text-sm">Tente ajustar seus filtros ou mudar a categoria.</p>
+          </div>
+          <Button variant="link" onClick={handleResetFilters} className="text-kinetic-orange">Limpar todos os filtros</Button>
+        </div>
+      ) : (
+        <div className={cn(
+          "grid gap-4",
+          viewMode === 'grid' 
+            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
+            : "grid-cols-1"
+        )}>
+          {products?.map(product => (
+            <ProductCard 
+              key={product.id}
+              product={product}
+              isSelected={isSelected(product.id)}
+              onSelect={toggleProduct}
+              onToggleFavorite={(id, fav) => toggleFavoriteMutation.mutate({ id, isFavorite: fav })}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
