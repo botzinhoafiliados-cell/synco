@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TactileCard } from '@/components/ui/TactileCard';
 import { KineticButton } from '@/components/ui/KineticButton';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ interface RadarFiltersProps {
 }
 
 const RadarFilters: React.FC<RadarFiltersProps> = ({ filters, onFilterChange, onReset }) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = React.useState(false);
 
   const updateFilter = (key: keyof ProductFilter, value: any) => {
     onFilterChange({ ...filters, [key]: value });

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { type User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
@@ -24,7 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClient();
+  
+  // Estabilizar o cliente Supabase para evitar instâncias redundantes
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -42,14 +44,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
+      (event, session) => {
+        const currentUser = session?.user ?? null;
+        
+        // Evitar atualizações de estado se o usuário não mudou de fato
+        if (currentUser?.id !== user?.id) {
+          setUser(currentUser);
+        }
+        
         setIsLoading(false);
         
-        if (_event === 'SIGNED_IN') {
+        // Mantido refresh apenas em eventos críticos de mudança de sessão
+        if (event === 'SIGNED_IN') {
           router.refresh();
         }
-        if (_event === 'SIGNED_OUT') {
+        
+        if (event === 'SIGNED_OUT') {
           setUser(null);
           router.push('/login');
           router.refresh();

@@ -3,7 +3,6 @@
 import React, { useState, type ReactNode } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import { SelectedProductsProvider } from '@/contexts/SelectedProductsContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,8 +18,8 @@ interface AppLayoutProps {
  * Migrado de: scr/components/layout/AppLayout.jsx (botBase)
  * Alterações principais:
  * - `<Outlet />` (react-router-dom) → `{children}` (Next.js)
- * - `base44.auth.me()` removido — auth agora vem do AuthContext via useAuth()
- * - SelectedProductsProvider mantido aqui para encapsular o carrinho no layout
+ * - base44.auth.me() removido — auth agora vem do AuthContext via useAuth()
+ * - SelectedProductsProvider removido (duplicidade corrigida — agora global em providers.tsx)
  * - FloatingCartBar será adicionado na Fase 2 (quando componentes shared forem migrados)
  */
 export default function AppLayout({ children }: AppLayoutProps) {
@@ -28,8 +27,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <SelectedProductsProvider>
-      <div className="min-h-screen bg-deep-void">
+    <div className="min-h-screen bg-deep-void">
 
         {/* Mobile overlay */}
         {mobileMenuOpen && (
@@ -64,6 +62,5 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* FloatingCartBar — será habilitado na Fase 2 */}
         {/* <FloatingCartBar /> */}
       </div>
-    </SelectedProductsProvider>
   );
 }
