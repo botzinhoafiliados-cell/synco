@@ -3,24 +3,38 @@ export type ChannelType = 'whatsapp' | 'telegram' | 'instagram' | 'facebook' | '
 
 export interface Channel {
     id: string;
+    user_id: string;
     name: string;
     type: ChannelType;
     status: GroupStatus;
-    groups_count: number;
-    contacts_count: number;
-    messages_sent: number;
     description?: string;
+    config?: any;
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string;
+    // UI fields (computed or joined)
+    groups_count?: number;
+    contacts_count?: number;
+    messages_sent?: number;
 }
 
 export interface Group {
     id: string;
+    user_id: string;
+    channel_id: string;
+    marketplace_id?: string | null;
     name: string;
-    channel_name: string;
-    members_count: number;
+    description?: string;
     status: GroupStatus;
-    tags: string[];
     is_source: boolean;
     is_destination: boolean;
-    sends_received: number;
     is_monitored: boolean;
+    members_count: number;
+    tags: string[];
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string;
+    // UI fields (joined)
+    channel_name?: string;
+    sends_received?: number;
 }

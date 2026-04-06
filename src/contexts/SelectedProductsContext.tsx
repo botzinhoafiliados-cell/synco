@@ -5,22 +5,15 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from 'react';
+import { Product } from '@/types/product';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface SelectedProduct {
-  id: string;
-  name: string;
-  image_url?: string;
-  current_price: number;
-  original_price: number;
-  discount_percent: number;
-  commission_percent: number;
-  marketplace: string;
-  original_link: string;
-}
+// Reusing the Product type from domain
+export type SelectedProduct = Product;
 
 interface SelectedProductsContextValue {
   selectedProducts: SelectedProduct[];
@@ -45,7 +38,18 @@ const SelectedProductsContext = createContext<SelectedProductsContextValue | nul
  * Adicionado: tipagem TypeScript, toggleProduct, isSelected
  */
 export function SelectedProductsProvider({ children }: { children: ReactNode }) {
-  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('synco_cart');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+
+  // Sync with localStorage
+  useEffect(() => {
+    localStorage.setItem('synco_cart', JSON.stringify(selectedProducts));
+  }, [selectedProducts]);
 
   const addProduct = useCallback((product: SelectedProduct) => {
     setSelectedProducts((prev) => {

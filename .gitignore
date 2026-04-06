@@ -28,6 +28,8 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 .env
+.env.supabase.cli.local
+.env.supabase.cli.*.local
 
 # vercel
 .vercel

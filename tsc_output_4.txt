@@ -1,0 +1,12 @@
+﻿.next/types/app/(dashboard)/monitoramento/page.ts(2,24): error TS2306: File 'C:/Users/esaur_4zg16wg/Desktop/SYNCO/src/app/(dashboard)/monitoramento/page.tsx' is not a module.
+.next/types/app/(dashboard)/monitoramento/page.ts(5,29): error TS2306: File 'C:/Users/esaur_4zg16wg/Desktop/SYNCO/src/app/(dashboard)/monitoramento/page.tsx' is not a module.
+src/app/(dashboard)/carrinho-ofertas/page.tsx(107,79): error TS18048: 'product.current_price' is possibly 'undefined'.
+src/app/(dashboard)/envio-rapido/page.tsx(33,66): error TS2554: Expected 1 arguments, but got 0.
+src/app/(dashboard)/envio-rapido/page.tsx(46,228): error TS2551: Property 'original_link' does not exist on type 'Product'. Did you mean 'original_url'?
+src/app/(dashboard)/envio-rapido/page.tsx(74,20): error TS2345: Argument of type '{ name: string; items: { product_id: string; custom_text: string; }[]; destinations: { destination_list_id: string; }[]; }' is not assignable to parameter of type 'CreateCampaignDTO'.
+  Types of property 'items' are incompatible.
+    Type '{ product_id: string; custom_text: string; }[]' is not assignable to type '{ product_id?: string | undefined; product_name: string; custom_text?: string | undefined; affiliate_url?: string | undefined; }[]'.
+      Property 'product_name' is missing in type '{ product_id: string; custom_text: string; }' but required in type '{ product_id?: string | undefined; product_name: string; custom_text?: string | undefined; affiliate_url?: string | undefined; }'.
+src/app/(dashboard)/envio-rapido/page.tsx(217,38): error TS2339: Property 'external_id' does not exist on type 'DestinationList'.
+src/app/(dashboard)/grupos/page.tsx(66,5): error TS18048: 'group.external_id' is possibly 'undefined'.
+src/app/(dashboard)/radar-ofertas/page.tsx(48,11): error TS2339: Property 'toggleFavorite' does not exist on type 'UseMutationResult<void, Error, { id: string; isFavorite: boolean; }, unknown>'.

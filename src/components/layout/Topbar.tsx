@@ -41,7 +41,7 @@ export default function Topbar({ onMobileMenuToggle }: TopbarProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const displayName = user?.full_name ?? 'Usuário';
+  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
   const initials = getInitials(displayName);
 
   return (

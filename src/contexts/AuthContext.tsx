@@ -1,12 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { getFakeUser, fakeLogout, type FakeUser } from '@/lib/auth/fake-auth';
+import { useRouter } from 'next/navigation';
+import { type User } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AuthContextValue {
-  user: FakeUser | null;
+  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   logout: () => Promise<void>;
@@ -18,27 +20,51 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
-/**
- * AuthProvider — Fase 1 / Desenvolvimento
- *
- * Usa fake-auth para simular usuário sempre autenticado.
- * SERÁ SUBSTITUÍDO na Fase 6 por autenticação real Supabase.
- *
- * Origem: scr/lib/AuthContext.jsx do botBase (sem dependência @base44/sdk)
- */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<FakeUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
-    getFakeUser()
-      .then(setUser)
-      .finally(() => setIsLoading(false));
-  }, []);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error('Erro ao inicializar auth:', error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+        
+        if (_event === 'SIGNED_IN') {
+          router.refresh();
+        }
+        if (_event === 'SIGNED_OUT') {
+          setUser(null);
+          router.push('/login');
+          router.refresh();
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase, router]);
 
   const logout = async () => {
-    setUser(null);
-    await fakeLogout();
+    await supabase.auth.signOut();
+    router.push('/login');
   };
 
   return (

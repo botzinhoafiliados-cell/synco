@@ -1,0 +1,54 @@
+﻿.next/types/app/(dashboard)/monitoramento/page.ts(2,24): error TS2306: File 'C:/Users/esaur_4zg16wg/Desktop/SYNCO/src/app/(dashboard)/monitoramento/page.tsx' is not a module.
+.next/types/app/(dashboard)/monitoramento/page.ts(5,29): error TS2306: File 'C:/Users/esaur_4zg16wg/Desktop/SYNCO/src/app/(dashboard)/monitoramento/page.tsx' is not a module.
+src/app/(dashboard)/canais/page.tsx(60,45): error TS7006: Parameter 'channel' implicitly has an 'any' type.
+src/app/(dashboard)/carrinho-ofertas/page.tsx(107,79): error TS18048: 'product.current_price' is possibly 'undefined'.
+src/app/(dashboard)/envio-rapido/page.tsx(33,66): error TS2554: Expected 1 arguments, but got 0.
+src/app/(dashboard)/envio-rapido/page.tsx(46,228): error TS2551: Property 'original_link' does not exist on type 'Product'. Did you mean 'original_url'?
+src/app/(dashboard)/envio-rapido/page.tsx(74,20): error TS2345: Argument of type '{ name: string; items: { product_id: string; custom_text: string; }[]; destinations: { destination_list_id: string; }[]; }' is not assignable to parameter of type 'CreateCampaignDTO'.
+  Types of property 'items' are incompatible.
+    Type '{ product_id: string; custom_text: string; }[]' is not assignable to type '{ product_id?: string | undefined; product_name: string; custom_text?: string | undefined; affiliate_url?: string | undefined; }[]'.
+      Property 'product_name' is missing in type '{ product_id: string; custom_text: string; }' but required in type '{ product_id?: string | undefined; product_name: string; custom_text?: string | undefined; affiliate_url?: string | undefined; }'.
+src/app/(dashboard)/envio-rapido/page.tsx(217,38): error TS2339: Property 'external_id' does not exist on type 'DestinationList'.
+src/app/(dashboard)/grupos/page.tsx(63,41): error TS7006: Parameter 'group' implicitly has an 'any' type.
+src/app/(dashboard)/radar-ofertas/page.tsx(48,11): error TS2339: Property 'toggleFavorite' does not exist on type 'UseMutationResult<void, Error, { id: string; isFavorite: boolean; }, unknown>'.
+src/components/destinations/DestinationDialog.tsx(93,41): error TS7006: Parameter 'g' implicitly has an 'any' type.
+src/components/destinations/DestinationDialog.tsx(152,43): error TS7006: Parameter 'group' implicitly has an 'any' type.
+src/components/destinations/DestinationDialog.tsx(153,54): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/components/groups/GroupDialog.tsx(69,33): error TS2339: Property 'external_id' does not exist on type 'Group'.
+src/components/groups/GroupDialog.tsx(80,36): error TS2339: Property 'external_id' does not exist on type 'Group'.
+src/components/groups/GroupDialog.tsx(146,41): error TS7006: Parameter 'channel' implicitly has an 'any' type.
+src/components/groups/GroupList.tsx(82,26): error TS2339: Property 'external_id' does not exist on type 'Group'.
+src/components/groups/GroupList.tsx(95,30): error TS2339: Property 'external_id' does not exist on type 'Group'.
+src/components/groups/GroupList.tsx(97,60): error TS2339: Property 'external_id' does not exist on type 'Group'.
+src/components/radar/ProductCard.tsx(154,14): error TS2304: Cannot find name 'Star'.
+src/hooks/use-channels.ts(9,44): error TS2339: Property 'getChannels' does not exist on type '{ list(userId: string): Promise<Channel[]>; upsert(channel: Partial<Channel> & { user_id: string; }): Promise<Channel>; delete(id: string, userId: string): Promise<...>; }'.
+src/hooks/use-channels.ts(19,22): error TS2339: Property 'createChannel' does not exist on type '{ list(userId: string): Promise<Channel[]>; upsert(channel: Partial<Channel> & { user_id: string; }): Promise<Channel>; delete(id: string, userId: string): Promise<...>; }'.
+src/hooks/use-channels.ts(36,22): error TS2339: Property 'updateChannel' does not exist on type '{ list(userId: string): Promise<Channel[]>; upsert(channel: Partial<Channel> & { user_id: string; }): Promise<Channel>; delete(id: string, userId: string): Promise<...>; }'.
+src/hooks/use-channels.ts(53,22): error TS2339: Property 'deleteChannel' does not exist on type '{ list(userId: string): Promise<Channel[]>; upsert(channel: Partial<Channel> & { user_id: string; }): Promise<Channel>; delete(id: string, userId: string): Promise<...>; }'.
+src/hooks/use-groups.ts(9,42): error TS2339: Property 'getGroups' does not exist on type '{ list(userId: string): Promise<Group[]>; upsert(group: Partial<Group> & { user_id: string; channel_id: string; }): Promise<Group>; delete(id: string, userId: string): Promise<...>; }'.
+src/hooks/use-groups.ts(19,20): error TS2339: Property 'createGroup' does not exist on type '{ list(userId: string): Promise<Group[]>; upsert(group: Partial<Group> & { user_id: string; channel_id: string; }): Promise<Group>; delete(id: string, userId: string): Promise<...>; }'.
+src/hooks/use-groups.ts(36,20): error TS2339: Property 'updateGroup' does not exist on type '{ list(userId: string): Promise<Group[]>; upsert(group: Partial<Group> & { user_id: string; channel_id: string; }): Promise<Group>; delete(id: string, userId: string): Promise<...>; }'.
+src/hooks/use-groups.ts(53,20): error TS2339: Property 'deleteGroup' does not exist on type '{ list(userId: string): Promise<Group[]>; upsert(group: Partial<Group> & { user_id: string; channel_id: string; }): Promise<Group>; delete(id: string, userId: string): Promise<...>; }'.
+src/mock/mock-data.ts(8,5): error TS2305: Module '"@/types"' has no exported member 'Earning'.
+src/mock/mock-data.ts(9,5): error TS2305: Module '"@/types"' has no exported member 'TopProductEarning'.
+src/mock/mock-data.ts(11,5): error TS2305: Module '"@/types"' has no exported member 'MonthlyTrend'.
+src/mock/mock-data.ts(30,52): error TS2353: Object literal may only specify known properties, and 'store_name' does not exist in type 'Product'.
+src/mock/mock-data.ts(31,56): error TS2353: Object literal may only specify known properties, and 'store_name' does not exist in type 'Product'.
+src/mock/mock-data.ts(32,55): error TS2353: Object literal may only specify known properties, and 'store_name' does not exist in type 'Product'.
+src/mock/mock-data.ts(33,61): error TS2353: Object literal may only specify known properties, and 'store_name' does not exist in type 'Product'.
+src/mock/mock-data.ts(34,56): error TS2353: Object literal may only specify known properties, and 'store_name' does not exist in type 'Product'.
+src/mock/mock-data.ts(35,53): error TS2353: Object literal may only specify known properties, and 'store_name' does not exist in type 'Product'.
+src/mock/mock-data.ts(36,54): error TS2353: Object literal may only specify known properties, and 'store_name' does not exist in type 'Product'.
+src/mock/mock-data.ts(37,58): error TS2353: Object literal may only specify known properties, and 'store_name' does not exist in type 'Product'.
+src/mock/mock-data.ts(38,56): error TS2353: Object literal may only specify known properties, and 'store_name' does not exist in type 'Product'.
+src/mock/mock-data.ts(39,58): error TS2353: Object literal may only specify known properties, and 'store_name' does not exist in type 'Product'.
+src/mock/mock-data.ts(43,5): error TS2739: Type '{ id: string; name: string; type: "whatsapp"; status: "active"; groups_count: number; contacts_count: number; messages_sent: number; description: string; }' is missing the following properties from type 'Channel': user_id, is_active
+src/mock/mock-data.ts(44,5): error TS2739: Type '{ id: string; name: string; type: "telegram"; status: "active"; groups_count: number; contacts_count: number; messages_sent: number; description: string; }' is missing the following properties from type 'Channel': user_id, is_active
+src/mock/mock-data.ts(45,5): error TS2739: Type '{ id: string; name: string; type: "instagram"; status: "active"; groups_count: number; contacts_count: number; messages_sent: number; description: string; }' is missing the following properties from type 'Channel': user_id, is_active
+src/mock/mock-data.ts(49,5): error TS2739: Type '{ id: string; name: string; channel_name: string; members_count: number; status: "active"; tags: string[]; is_source: false; is_destination: true; sends_received: number; is_monitored: true; }' is missing the following properties from type 'Group': user_id, channel_id, is_active
+src/mock/mock-data.ts(50,5): error TS2739: Type '{ id: string; name: string; channel_name: string; members_count: number; status: "active"; tags: string[]; is_source: false; is_destination: true; sends_received: number; is_monitored: false; }' is missing the following properties from type 'Group': user_id, channel_id, is_active
+src/mock/mock-data.ts(51,5): error TS2739: Type '{ id: string; name: string; channel_name: string; members_count: number; status: "active"; tags: string[]; is_source: true; is_destination: true; sends_received: number; is_monitored: true; }' is missing the following properties from type 'Group': user_id, channel_id, is_active
+src/mock/mock-data.ts(55,129): error TS2353: Object literal may only specify known properties, and 'color' does not exist in type 'DestinationList'.
+src/mock/mock-data.ts(56,124): error TS2353: Object literal may only specify known properties, and 'color' does not exist in type 'DestinationList'.
+src/mock/mock-data.ts(65,121): error TS2322: Type '"active"' is not assignable to type 'CampaignStatus'.
+src/mock/mock-data.ts(66,40): error TS2353: Object literal may only specify known properties, and 'segment_name' does not exist in type 'Campaign'.

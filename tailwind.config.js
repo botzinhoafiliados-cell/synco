@@ -54,6 +54,9 @@ module.exports = {
           DEFAULT: 'hsl(var(--warning))',
           foreground: 'hsl(var(--warning-foreground))',
         },
+        'deep-void': '#0F0F12',
+        'anthracite-surface': '#1A1A1E',
+        'kinetic-orange': '#FF6B00',
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar-background))',
           foreground: 'hsl(var(--sidebar-foreground))',
@@ -64,6 +67,13 @@ module.exports = {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
+      },
+      boxShadow: {
+        'skeuo-flat': '4px 4px 8px #08080a, -4px -4px 8px #222228',
+        'skeuo-pressed': 'inset 2px 2px 5px #08080a, inset -2px -2px 5px #222228',
+        'skeuo-elevated': '8px 8px 16px #08080a, -8px -8px 16px #222228',
+        'glow-orange': '0 0 15px rgba(255, 107, 0, 0.5)',
+        'glow-orange-intense': '0 0 25px rgba(255, 107, 0, 0.7)',
       },
       borderRadius: {
         lg: 'var(--radius)',
