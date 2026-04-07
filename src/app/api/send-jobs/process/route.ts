@@ -138,11 +138,8 @@ export async function POST(request: Request) {
         let response;
         const messageText = job.message_body || '';
         
-        // Garante formatação exigida pelo gateway da Wasender @c.us
-        let formattedPhone = job.destination.replace(/[^\d@.us]/g, '');
-        if (!formattedPhone.includes('@')) {
-          formattedPhone = `${formattedPhone}@c.us`;
-        }
+        // Garante formatação exigida pelo gateway da Wasender (Extrai rigidamente apenar NÚMEROS)
+        const formattedPhone = job.destination.replace(/[^\d]/g, '');
 
         // Se houver imagem, envia imagem com legenda (caption)
         if (job.image_url) {

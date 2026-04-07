@@ -48,11 +48,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Channel Secret (session_api_key) ausente. Por favor, exclua e reconecte seu WhatsApp na guia Canais.' }, { status: 400 });
     }
 
-    // Formata o número (Wasender exige '@c.us' para DMs e números limpos)
-    let formattedPhone = phone.replace(/[^\d@.us]/g, ''); // remove + e espaços, mantém partes do c.us
-    if (!formattedPhone.includes('@')) {
-      formattedPhone = `${formattedPhone}@c.us`;
-    }
+    // Extrai rigidamente apenar NÚMEROS do telefone (O Wame faz o append automático dos sufixos c.us e rejeita se for manual)
+    const formattedPhone = phone.replace(/[^\d]/g, ''); 
 
     console.log(`[TEST-SEND] Disparando para: ${formattedPhone} usando token via Wame Route!`);
     
