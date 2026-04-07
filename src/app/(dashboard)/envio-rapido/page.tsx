@@ -67,6 +67,13 @@ export default function EnvioRapidoPage() {
   const [testMessage, setTestMessage] = useState('Oi, este é um teste do motor M1 SYNCO! 🚀');
   const [isTesting, setIsTesting] = useState(false);
 
+  // Auto-seleciona o primeiro canal quando carregar
+  useEffect(() => {
+    if (channels && channels.length > 0 && !testChannelId) {
+      setTestChannelId(channels[0].id);
+    }
+  }, [channels, testChannelId]);
+
   const linksCount = useMemo(() => linksInput.split('\n').filter(l => l.trim()).length, [linksInput]);
 
   const handleTestSend = async () => {
