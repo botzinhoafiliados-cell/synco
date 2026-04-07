@@ -21,7 +21,10 @@ import {
   Edit2
 } from 'lucide-react';
 import { useDestinations } from '@/hooks/use-destinations';
+import { useChannels } from '@/hooks/use-channels';
 import { useCreateCampaign } from '@/hooks/use-campaigns';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -57,7 +60,36 @@ export default function EnvioRapidoPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // States para Teste Direto
+  const { data: channels, isLoading: loadingChannels } = useChannels(user?.id);
+  const [testChannelId, setTestChannelId] = useState('');
+  const [testPhone, setTestPhone] = useState('');
+  const [testMessage, setTestMessage] = useState('Oi, este é um teste do motor M1 SYNCO! 🚀');
+  const [isTesting, setIsTesting] = useState(false);
+
   const linksCount = useMemo(() => linksInput.split('\n').filter(l => l.trim()).length, [linksInput]);
+
+  const handleTestSend = async () => {
+    if (!testChannelId || !testPhone || !testMessage) {
+      toast.error('Preencha os campos obrigatórios do teste.');
+      return;
+    }
+    setIsTesting(true);
+    try {
+      const res = await fetch('/api/wa/send-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId: testChannelId, phone: testPhone, message: testMessage })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao enviar via API');
+      toast.success('Envio direto disparado com sucesso!');
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   // Gerar textos automaticamente ao processar produtos ou mudar o tom
   useEffect(() => {
@@ -169,7 +201,18 @@ export default function EnvioRapidoPage() {
         description="Core Operational Unit: Cole links, converta e dispare em segundos."
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <Tabs defaultValue="test" className="w-full">
+        <TabsList className="mb-8 bg-deep-void shadow-skeuo-pressed border p-1 rounded-xl">
+          <TabsTrigger value="test" className="text-xs font-black uppercase tracking-widest px-6 data-[state=active]:bg-kinetic-orange/10 data-[state=active]:text-kinetic-orange">
+            🔬 Teste de Conexão
+          </TabsTrigger>
+          <TabsTrigger value="broadcast" className="text-xs font-black uppercase tracking-widest px-6 data-[state=active]:bg-kinetic-orange/10 data-[state=active]:text-kinetic-orange">
+            🚀 Envio em Massa (Grupos)
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="broadcast" className="mt-0">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Lado Esquerdo: Input e Processamento */}
         <div className="lg:col-span-7 space-y-8">
           
@@ -422,6 +465,78 @@ export default function EnvioRapidoPage() {
           </TactileCard>
         </div>
       </div>
+      </TabsContent>
+
+      <TabsContent value="test" className="mt-0">
+        <TactileCard className="p-8 max-w-2xl mx-auto border-none ring-1 ring-white/5 space-y-6">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+              <SendHorizonal className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-black uppercase tracking-widest text-sm">Disparo Imediato</h3>
+              <p className="text-[10px] uppercase text-white/40 font-bold">Teste a conexão enviando para si mesmo</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-2 block">Canal de Disparo (Remetente)</label>
+              {loadingChannels ? (
+                <div className="text-xs font-bold text-white/30 uppercase">Carregando canais...</div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {channels?.map(c => (
+                    <div 
+                      key={c.id} 
+                      onClick={() => setTestChannelId(c.id)}
+                      className={cn(
+                        "p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all",
+                        testChannelId === c.id ? "bg-blue-500/10 border-blue-500/30 ring-1 ring-blue-500" : "bg-deep-void border-white/5 hover:border-white/20"
+                      )}
+                    >
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                      <span className="text-xs font-bold">{c.name}</span>
+                    </div>
+                  ))}
+                  {(!channels || channels.length === 0) && (
+                    <div className="text-xs font-bold text-destructive uppercase">Nenhum canal Wasender conectado!</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-2 block">Número do Destinatário</label>
+              <Input 
+                value={testPhone}
+                onChange={e => setTestPhone(e.target.value)}
+                placeholder="Ex: +5547990000000"
+                className="bg-deep-void border-none shadow-skeuo-pressed font-mono text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-2 block">Mensagem Experimental</label>
+              <Textarea 
+                value={testMessage}
+                onChange={e => setTestMessage(e.target.value)}
+                className="bg-deep-void border-none shadow-skeuo-pressed min-h-[100px] text-sm"
+              />
+            </div>
+
+            <KineticButton 
+              className="w-full h-12 uppercase font-black tracking-widest text-xs mt-4 bg-kinetic-orange hover:bg-kinetic-orange/90 text-black shadow-glow-orange/30"
+              onClick={handleTestSend}
+              disabled={isTesting || !testChannelId || !testPhone || !testMessage}
+            >
+              {isTesting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <SendHorizonal className="w-4 h-4 mr-2" />}
+              {isTesting ? 'Transmitindo...' : 'Fogo (Enviar Teste)'}
+            </KineticButton>
+          </div>
+        </TactileCard>
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }
