@@ -79,7 +79,8 @@ export async function POST(request: Request) {
         }
       }
 
-      // ─── 5. Verificar status da sessão antes de enviar ─────────────────
+      // ─── 5. Verificar status e secrets antes de enviar ─────────────────
+      let sessionApiKey = '';
       try {
         // Checar se a sessão ainda está conectada buscando o canal
         const { data: channel } = await supabase
@@ -103,28 +104,59 @@ export async function POST(request: Request) {
           results.push({ jobId: job.id, status: 'failed', error: `session_${sessionStatus}` });
           continue;
         }
-      } catch {
-        // Se não conseguimos checar, tentamos enviar assim mesmo
+
+        // Buscar a chave da API forte da mesma sessão
+        const { data: secretData } = await supabase
+          .from('channel_secrets')
+          .select('session_api_key')
+          .eq('channel_id', job.channel_id)
+          .maybeSingle();
+        
+        sessionApiKey = secretData?.session_api_key || '';
+        
+        if (!sessionApiKey) {
+           throw new Error('API Key da sessão não encontrada. Re-escaneie o QR Code.');
+        }
+
+      } catch (authErr: any) {
+         // Falha crítica de auth
+          await supabase
+            .from('send_jobs')
+            .update({
+              status: 'failed',
+              last_error: authErr.message || 'Erro de autenticação da sessão',
+              try_count: job.try_count + 1,
+              processed_at: new Date().toISOString()
+            })
+            .eq('id', job.id);
+          results.push({ jobId: job.id, status: 'failed', error: 'missing_session_auth' });
+          continue;
       }
 
       // ─── 6. Enviar mensagem via Wasender ───────────────────────────────
       try {
         let response;
         const messageText = job.message_body || '';
+        
+        // Garante formatação exigida pelo gateway da Wasender @c.us
+        let formattedPhone = job.destination.replace(/[^\d@.us]/g, '');
+        if (!formattedPhone.includes('@')) {
+          formattedPhone = `${formattedPhone}@c.us`;
+        }
 
         // Se houver imagem, envia imagem com legenda (caption)
         if (job.image_url) {
           response = await WasenderClient.sendImage(
-            job.session_id,
-            job.destination,
+            sessionApiKey,
+            formattedPhone,
             job.image_url,
             messageText
           );
         } else {
           // Apenas texto
           response = await WasenderClient.sendMessage(
-            job.session_id,
-            job.destination,
+            sessionApiKey,
+            formattedPhone,
             messageText
           );
         }

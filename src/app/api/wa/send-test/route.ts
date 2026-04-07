@@ -36,16 +36,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Channel not connected (missing sessionId)' }, { status: 400 });
     }
 
+    // 1.5 Buscar a session_api_key no channel_secrets
+    const { data: secretData } = await supabase
+      .from('channel_secrets')
+      .select('session_api_key')
+      .eq('channel_id', channelId)
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (!secretData?.session_api_key) {
+      return NextResponse.json({ error: 'Channel Secret (session_api_key) ausente. Por favor, exclua e reconecte seu WhatsApp na guia Canais.' }, { status: 400 });
+    }
+
     // Formata o número (Wasender exige '@c.us' para DMs e números limpos)
     let formattedPhone = phone.replace(/[^\d@.us]/g, ''); // remove + e espaços, mantém partes do c.us
     if (!formattedPhone.includes('@')) {
       formattedPhone = `${formattedPhone}@c.us`;
     }
 
-    console.log(`[TEST-SEND] Disparando de sessionId: ${sessionId} para: ${formattedPhone}`);
+    console.log(`[TEST-SEND] Disparando para: ${formattedPhone} usando token via Wame Route!`);
     
     // 2. Disparar direto no Wasender
-    const response = await WasenderClient.sendMessage(sessionId, formattedPhone, message);
+    const response = await WasenderClient.sendMessage(secretData.session_api_key, formattedPhone, message);
 
     console.log(`[TEST-SEND] Sucesso:`, response);
     return NextResponse.json({ success: true, response });

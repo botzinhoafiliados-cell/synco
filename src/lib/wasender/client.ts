@@ -115,54 +115,58 @@ export class WasenderClient {
 
   /**
    * Envia uma mensagem de texto para um destino via Wasender.
-   * @param sessionId - ID da sessão Wasender
-   * @param to - Número ou remote_id do grupo (ex: "5511999999999@c.us" ou "120363...@g.us")
+   * IMPORTANTE: Envio requer a API_KEY da sessão (e não o PAT global) e a rota /send-message.
+   * @param sessionApiKey - Chave de API única da sessão (do channel_secrets)
+   * @param to - Número do destinatário
    * @param message - Corpo da mensagem
-   * @returns Resposta da API Wasender com message_id
    */
-  static async sendMessage(sessionId: string, to: string, message: string) {
-    const res = await fetch(`${this.baseURL}/send/messages`, {
+  static async sendMessage(sessionApiKey: string, to: string, message: string) {
+    const res = await fetch(`${this.baseURL}/send-message`, {
       method: 'POST',
-      headers: this.headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionApiKey}`
+      },
       body: JSON.stringify({
-        session_id: sessionId,
         to,
-        type: 'text',
         text: message
       })
     });
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Failed to send message: ${err}`);
+    // O wasender muitas vezes volta sucesso, mas message=..., precisamos checar res.json
+    const data = await res.json();
+    
+    if (!res.ok || data.success === false) {
+      throw new Error(`Failed to send message: ${data.message || JSON.stringify(data.errors) || 'Unknown Error'}`);
     }
-    return res.json();
+    return data;
   }
 
   /**
    * Envia uma mensagem com imagem e texto opcional.
-   * @param sessionId - ID da sessão Wasender
+   * @param sessionApiKey - Chave de API da sessão
    * @param to - Número ou remote_id do grupo
    * @param imageUrl - URL da imagem
    * @param caption - Texto opcional embaixo da imagem
    */
-  static async sendImage(sessionId: string, to: string, imageUrl: string, caption?: string) {
-    const res = await fetch(`${this.baseURL}/send/messages`, {
+  static async sendImage(sessionApiKey: string, to: string, imageUrl: string, caption?: string) {
+    const res = await fetch(`${this.baseURL}/send-message`, {
       method: 'POST',
-      headers: this.headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionApiKey}`
+      },
       body: JSON.stringify({
-        session_id: sessionId,
         to,
-        type: 'image',
-        image: { url: imageUrl },
-        caption: caption || ''
+        image: imageUrl,
+        text: caption || ''
       })
     });
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Failed to send image: ${err}`);
+    const data = await res.json();
+    if (!res.ok || data.success === false) {
+      throw new Error(`Failed to send image: ${data.message || JSON.stringify(data.errors) || 'Unknown Error'}`);
     }
-    return res.json();
+    return data;
   }
 }
