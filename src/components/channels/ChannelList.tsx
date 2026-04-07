@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Edit, Trash2, Send, MessageCircle, QrCode, RefreshCw, AlertCircle, PhoneOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ChannelTelegramConnectDialog } from './ChannelTelegramConnectDialog';
 import { ChannelWasenderConnectDialog } from './ChannelWasenderConnectDialog';
 import { toast } from 'sonner';
 
@@ -31,6 +32,7 @@ interface ChannelListProps {
 
 export function ChannelList({ channels, onEdit, onDelete }: ChannelListProps) {
   const [connectChannel, setConnectChannel] = useState<Channel | null>(null);
+  const [connectTelegramChannel, setConnectTelegramChannel] = useState<Channel | null>(null);
   const [isSyncingId, setIsSyncingId] = useState<string | null>(null);
 
   const handleSyncGroups = async (channelId: string) => {
@@ -53,17 +55,24 @@ export function ChannelList({ channels, onEdit, onDelete }: ChannelListProps) {
   };
 
   const renderStatus = (channel: Channel) => {
-    if (channel.type !== 'whatsapp') return null;
     const status = channel.config?.status;
     
-    switch (status) {
-      case 'connected': return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[9px] uppercase tracking-widest"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 shrink-0 animate-pulse" /> Conectado</Badge>;
-      case 'qrcode_pending': return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-none font-black text-[9px] uppercase tracking-widest"><QrCode size={10} className="mr-1.5" /> Aguardando QR</Badge>;
-      case 'disconnected': return <Badge variant="outline" className="bg-muted text-muted-foreground border-none font-black text-[9px] uppercase tracking-widest"><PhoneOff size={10} className="mr-1.5" /> Desconectado</Badge>;
-      case 'session_lost': return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-none font-black text-[9px] uppercase tracking-widest"><AlertCircle size={10} className="mr-1.5" /> Sessão Perdida</Badge>;
-      case 'sync_failed': return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-none font-black text-[9px] uppercase tracking-widest"><AlertCircle size={10} className="mr-1.5" /> Falha no Link</Badge>;
-      default: return <Badge variant="outline" className="bg-white/5 text-white/40 border-none font-black text-[9px] uppercase tracking-widest">Sem Instância</Badge>;
+    if (channel.type === 'whatsapp') {
+      switch (status) {
+        case 'connected': return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[9px] uppercase tracking-widest"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 shrink-0 animate-pulse" /> Conectado</Badge>;
+        case 'qrcode_pending': return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-none font-black text-[9px] uppercase tracking-widest"><QrCode size={10} className="mr-1.5" /> Aguardando QR</Badge>;
+        case 'disconnected': return <Badge variant="outline" className="bg-muted text-muted-foreground border-none font-black text-[9px] uppercase tracking-widest"><PhoneOff size={10} className="mr-1.5" /> Desconectado</Badge>;
+        case 'session_lost': return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-none font-black text-[9px] uppercase tracking-widest"><AlertCircle size={10} className="mr-1.5" /> Sessão Perdida</Badge>;
+        case 'sync_failed': return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-none font-black text-[9px] uppercase tracking-widest"><AlertCircle size={10} className="mr-1.5" /> Falha no Link</Badge>;
+        default: return <Badge variant="outline" className="bg-white/5 text-white/40 border-none font-black text-[9px] uppercase tracking-widest">Sem Instância</Badge>;
+      }
+    } else if (channel.type === 'telegram') {
+      if (status === 'connected') {
+        return <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-none font-black text-[9px] uppercase tracking-widest"><div className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2 shrink-0 animate-pulse" /> Conectado</Badge>;
+      }
+      return <Badge variant="outline" className="bg-white/5 text-white/40 border-none font-black text-[9px] uppercase tracking-widest">Sem Bot Token</Badge>;
     }
+    return null;
   };
 
   if (channels.length === 0) {
@@ -103,8 +112,13 @@ export function ChannelList({ channels, onEdit, onDelete }: ChannelListProps) {
                         <MessageCircle size={12} className="mr-1" /> WhatsApp
                       </span>
                     ) : (
-                      <span className="flex items-center text-xs text-blue-600 font-medium">
+                      <span className="flex items-center text-xs text-blue-500 font-medium tracking-tight">
                         <Send size={12} className="mr-1" /> Telegram
+                        {channel.config?.bot_username && (
+                          <span className="ml-1 text-muted-foreground opacity-70">
+                            (@{channel.config.bot_username})
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>
@@ -140,6 +154,15 @@ export function ChannelList({ channels, onEdit, onDelete }: ChannelListProps) {
                          </>
                       )}
 
+                      {channel.type === 'telegram' && (
+                         <>
+                            <DropdownMenuItem onClick={() => setConnectTelegramChannel(channel)} className="gap-2 cursor-pointer text-blue-500 focus:text-blue-500 focus:bg-blue-500/10 font-bold text-xs uppercase tracking-widest">
+                               <Send size={14} /> {channel.config?.status === 'connected' ? 'Reconfigurar Bot' : 'Conectar Bot'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                         </>
+                      )}
+
                       <DropdownMenuItem onClick={() => onEdit(channel)} className="gap-2 cursor-pointer">
                         <Edit size={14} className="text-primary" /> Editar Canal
                       </DropdownMenuItem>
@@ -164,6 +187,16 @@ export function ChannelList({ channels, onEdit, onDelete }: ChannelListProps) {
         channel={connectChannel}
         onConnected={() => {
            toast.success("Sessão conectada recarregando a página.");
+           setTimeout(() => window.location.reload(), 1500);
+        }}
+      />
+
+      <ChannelTelegramConnectDialog 
+        isOpen={!!connectTelegramChannel}
+        onClose={() => setConnectTelegramChannel(null)}
+        channel={connectTelegramChannel}
+        onConnected={() => {
+           toast.success("Bot conectado! Recarregando...");
            setTimeout(() => window.location.reload(), 1500);
         }}
       />

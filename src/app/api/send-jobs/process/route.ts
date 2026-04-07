@@ -81,15 +81,21 @@ export async function POST(request: Request) {
 
       // ─── 5. Verificar status e secrets antes de enviar ─────────────────
       let sessionApiKey = '';
+      let channelType = 'whatsapp';
+      let isTelegram = false;
+
       try {
         // Checar se a sessão ainda está conectada buscando o canal
         const { data: channel } = await supabase
           .from('channels')
-          .select('config')
+          .select('config, type')
           .eq('id', job.channel_id)
           .single();
 
+        channelType = channel?.type || 'whatsapp';
+        isTelegram = channelType === 'telegram';
         const sessionStatus = channel?.config?.status;
+        
         if (sessionStatus === 'session_lost' || sessionStatus === 'disconnected') {
           await supabase
             .from('send_jobs')
@@ -105,7 +111,7 @@ export async function POST(request: Request) {
           continue;
         }
 
-        // Buscar a chave da API forte da mesma sessão
+        // Buscar a chave da API (Bot Token no telegram ou API Key no whatsapp)
         const { data: secretData } = await supabase
           .from('channel_secrets')
           .select('session_api_key')
@@ -115,7 +121,7 @@ export async function POST(request: Request) {
         sessionApiKey = secretData?.session_api_key || '';
         
         if (!sessionApiKey) {
-           throw new Error('API Key da sessão não encontrada. Re-escaneie o QR Code.');
+           throw new Error('Chave de API do canal não encontrada. Por favor, reconecte no painel.');
         }
 
       } catch (authErr: any) {
@@ -133,29 +139,48 @@ export async function POST(request: Request) {
           continue;
       }
 
-      // ─── 6. Enviar mensagem via Wasender ───────────────────────────────
+      // ─── 6. Enviar mensagem via Worker ───────────────────────────────
       try {
         let response;
         const messageText = job.message_body || '';
-        
-        // Garante formatação exigida pelo gateway da Wasender (Extrai rigidamente apenar NÚMEROS)
-        const formattedPhone = job.destination.replace(/[^\d]/g, '');
 
-        // Se houver imagem, envia imagem com legenda (caption)
-        if (job.image_url) {
-          response = await WasenderClient.sendImage(
-            sessionApiKey,
-            formattedPhone,
-            job.image_url,
-            messageText
-          );
+        if (isTelegram) {
+           // Telegram envia direto pro chat_id que vem no destination (seja positivo ou negativo)
+           // Importação não tá no escopo lá em cima, precisamos dar require dinâmico ou no topo
+           const { TelegramClient } = await import('@/lib/telegram/client');
+
+           if (job.image_url) {
+              response = await TelegramClient.sendPhoto(
+                sessionApiKey,
+                job.destination,
+                job.image_url,
+                messageText
+              );
+           } else {
+              response = await TelegramClient.sendMessage(
+                sessionApiKey,
+                job.destination,
+                messageText
+              );
+           }
         } else {
-          // Apenas texto
-          response = await WasenderClient.sendMessage(
-            sessionApiKey,
-            formattedPhone,
-            messageText
-          );
+           // Fluxo Whatsapp (Wasender)
+           let formattedPhone = job.destination.replace(/[^\d]/g, '');
+
+           if (job.image_url) {
+             response = await WasenderClient.sendImage(
+               sessionApiKey,
+               formattedPhone,
+               job.image_url,
+               messageText
+             );
+           } else {
+             response = await WasenderClient.sendMessage(
+               sessionApiKey,
+               formattedPhone,
+               messageText
+             );
+           }
         }
 
         const messageId = response?.message_id || response?.id || response?.data?.id || null;
@@ -204,7 +229,11 @@ export async function POST(request: Request) {
       }
 
       // ─── 7. Cooldown entre mensagens ───────────────────────────────────
-      await sleep(COOLDOWN_BETWEEN_MSGS_MS);
+      const cooldownMs = (channelType === 'telegram') 
+        ? parseInt(process.env.TELEGRAM_COOLDOWN_MS || '1100', 10)
+        : COOLDOWN_BETWEEN_MSGS_MS;
+      
+      await sleep(cooldownMs);
     }
 
     return NextResponse.json({
