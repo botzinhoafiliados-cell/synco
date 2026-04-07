@@ -74,6 +74,10 @@ export default function EnvioRapidoPage() {
     }
   }, [channels, testChannelId]);
 
+  // Detectar o canal selecionado e seu tipo
+  const selectedChannel = useMemo(() => channels?.find(c => c.id === testChannelId), [channels, testChannelId]);
+  const selectedChannelType = selectedChannel?.type || 'whatsapp';
+
   const linksCount = useMemo(() => linksInput.split('\n').filter(l => l.trim()).length, [linksInput]);
 
   const handleTestSend = async () => {
@@ -84,10 +88,21 @@ export default function EnvioRapidoPage() {
     setIsTesting(true);
     toast.info('Iniciando requisição para API...');
     try {
-      const res = await fetch('/api/wa/send-test', {
+      let apiUrl: string;
+      let body: Record<string, string>;
+
+      if (selectedChannelType === 'telegram') {
+        apiUrl = '/api/telegram/send-test';
+        body = { channelId: testChannelId, chatId: testPhone, message: testMessage };
+      } else {
+        apiUrl = '/api/wa/send-test';
+        body = { channelId: testChannelId, phone: testPhone, message: testMessage };
+      }
+
+      const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelId: testChannelId, phone: testPhone, message: testMessage })
+        body: JSON.stringify(body)
       });
       
       const text = await res.text();
@@ -95,7 +110,6 @@ export default function EnvioRapidoPage() {
       try {
         data = JSON.parse(text);
       } catch (parseErr) {
-        // Falha no JSON (geralmente erro nativo 500 do NextJS)
         alert('ERRO CRÍTICO DO SERVIDOR:\n' + text.substring(0, 200));
         toast.error('O Servidor retornou um erro não interpretável (verifique o log)');
         return;
@@ -105,7 +119,8 @@ export default function EnvioRapidoPage() {
         throw new Error(data.error || 'Erro ao enviar via API');
       }
       
-      alert('SUCESSO! O Wasender aceitou a mensagem.\nRetorno: ' + JSON.stringify(data.response).substring(0, 100));
+      const platformName = selectedChannelType === 'telegram' ? 'Telegram' : 'Wasender';
+      alert(`SUCESSO! O ${platformName} aceitou a mensagem.\nRetorno: ` + JSON.stringify(data.response).substring(0, 100));
       toast.success('Envio direto disparado com sucesso!');
     } catch (e: any) {
       alert('ERRO CATCH:\n' + (e.message || String(e)));
@@ -519,25 +534,41 @@ export default function EnvioRapidoPage() {
                         testChannelId === c.id ? "bg-blue-500/10 border-blue-500/30 ring-1 ring-blue-500" : "bg-deep-void border-white/5 hover:border-white/20"
                       )}
                     >
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                      <div className={cn(
+                        "w-2 h-2 rounded-full shadow-[0_0_10px]",
+                        c.config?.status === 'connected' ? "bg-emerald-500 shadow-emerald-500/50" : "bg-white/20 shadow-white/10"
+                      )} />
                       <span className="text-xs font-bold">{c.name}</span>
+                      <Badge variant="outline" className={cn(
+                        "ml-auto border-none text-[8px] font-black uppercase tracking-widest h-5 px-2",
+                        c.type === 'telegram' ? "bg-blue-500/10 text-blue-400" : "bg-emerald-500/10 text-emerald-400"
+                      )}>
+                        {c.type === 'telegram' ? '🤖 Telegram' : '📱 WhatsApp'}
+                      </Badge>
                     </div>
                   ))}
                   {(!channels || channels.length === 0) && (
-                    <div className="text-xs font-bold text-destructive uppercase">Nenhum canal Wasender conectado!</div>
+                    <div className="text-xs font-bold text-destructive uppercase">Nenhum canal conectado!</div>
                   )}
                 </div>
               )}
             </div>
 
             <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-2 block">Número do Destinatário</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-2 block">
+                {selectedChannelType === 'telegram' ? 'Chat ID do Destinatário' : 'Número do Destinatário'}
+              </label>
               <Input 
                 value={testPhone}
                 onChange={e => setTestPhone(e.target.value)}
-                placeholder="Ex: +5547990000000"
+                placeholder={selectedChannelType === 'telegram' ? 'Ex: -1001234567890 ou 123456789' : 'Ex: +5547990000000'}
                 className="bg-deep-void border-none shadow-skeuo-pressed font-mono text-sm"
               />
+              {selectedChannelType === 'telegram' && (
+                <p className="text-[9px] text-white/20 font-bold mt-1.5 uppercase tracking-tight">
+                  💡 Para grupos, use o ID numérico negativo. Ex: -1001234567890
+                </p>
+              )}
             </div>
 
             <div>
