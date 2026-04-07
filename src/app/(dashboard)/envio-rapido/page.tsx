@@ -82,17 +82,34 @@ export default function EnvioRapidoPage() {
       return;
     }
     setIsTesting(true);
+    toast.info('Iniciando requisição para API...');
     try {
       const res = await fetch('/api/wa/send-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channelId: testChannelId, phone: testPhone, message: testMessage })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao enviar via API');
+      
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        // Falha no JSON (geralmente erro nativo 500 do NextJS)
+        alert('ERRO CRÍTICO DO SERVIDOR:\n' + text.substring(0, 200));
+        toast.error('O Servidor retornou um erro não interpretável (verifique o log)');
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao enviar via API');
+      }
+      
+      alert('SUCESSO! O Wasender aceitou a mensagem.\nRetorno: ' + JSON.stringify(data.response).substring(0, 100));
       toast.success('Envio direto disparado com sucesso!');
     } catch (e: any) {
-      toast.error(e.message);
+      alert('ERRO CATCH:\n' + (e.message || String(e)));
+      toast.error(e.message || String(e));
     } finally {
       setIsTesting(false);
     }
