@@ -18,57 +18,29 @@ import {
     Shield, Send, BookOpen, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-const DAYS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-
-const MOCK_USERS = [
-    { name: 'João Silva', email: 'joao@synco.com', role: 'owner', avatar: 'JS' },
-    { name: 'Maria Souza', email: 'maria@synco.com', role: 'admin', avatar: 'MS' },
-    { name: 'Pedro Santos', email: 'pedro@synco.com', role: 'operador', avatar: 'PS' },
-];
-
-const ROLES = [
-    { value: 'owner', label: 'Proprietário', desc: 'Acesso total, incluindo faturamento e configurações' },
-    { value: 'admin', label: 'Administrador', desc: 'Gerencia tudo exceto faturamento e planos' },
-    { value: 'operador', label: 'Operador', desc: 'Campanhas, templates, automações e envios' },
-    { value: 'analista', label: 'Analista', desc: 'Somente relatórios e visualização' },
-];
-
-const MARKETPLACE_HELP: Record<string, string> = {
-    shopee: 'Shopee Affiliate Center → Minha conta → ID de afiliado',
-    mercadolivre: 'Programa de Parceiros ML → Configurações → ID do publisher',
-    amazon: 'Amazon Associates → Ferramentas → Store ID',
-    magalu: 'Parceiro Magalu → Integração → Código de afiliado',
-    aliexpress: 'AliExpress Portals → Ferramentas → PID',
-    shein: 'Shein Affiliate → Conta → Código único',
-};
-
-const MOCK_MARKETPLACES = [
-    { id: 'shopee', name: 'Shopee', icon: '🟠', description: 'Programa de Afiliados Shopee', configured: true, affiliate_id: '123456789', last_validated: '2024-03-20' },
-    { id: 'mercadolivre', name: 'Mercado Livre', icon: '🟡', description: 'Mercado Livre Parceiros', configured: true, affiliate_id: 'ML-998877', last_validated: '2024-03-21' },
-    { id: 'amazon', name: 'Amazon', icon: '🔵', description: 'Amazon Associates', configured: false, affiliate_id: '', last_validated: null },
-    { id: 'magalu', name: 'Magalu', icon: '🔵', description: 'Parceiro Magalu', configured: false, affiliate_id: '', last_validated: null },
-];
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  useMarketplaceCatalog, 
+  useUserMarketplaceConnections, 
+  useUpsertMarketplaceConnection 
+} from '@/hooks/use-marketplaces';
+import { AffiliateSettingsCard } from '@/components/settings/AffiliateSettingsCard';
 
 export default function ConfiguracoesPage() {
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('profile');
-    const [scheduleEnabled, setScheduleEnabled] = useState(true);
-    const [marketplaces, setMarketplaces] = useState(MOCK_MARKETPLACES);
-    const [testingId, setTestingId] = useState<string | null>(null);
-    const [editingMp, setEditingMp] = useState<string | null>(null);
-    const [tempId, setTempId] = useState('');
+    
+    // Real Data Hooks
+    const { data: catalog, isLoading: isLoadingCatalog } = useMarketplaceCatalog();
+    const { data: connections, isLoading: isLoadingConnections } = useUserMarketplaceConnections(user?.id);
+    const updateConnection = useUpsertMarketplaceConnection();
 
-    const handleTestMp = async (mpId: string) => {
-        setTestingId(mpId);
-        await new Promise(r => setTimeout(r, 1800));
-        setTestingId(null);
-        toast.success('Conexão validada com sucesso!');
-    };
-
-    const handleSaveMp = (mpId: string) => {
-        setMarketplaces(prev => prev.map(m => m.id === mpId ? { ...m, affiliate_id: tempId, configured: !!tempId, last_validated: new Date().toISOString() } : m));
-        setEditingMp(null);
-        toast.success('ID de afiliado salvo!');
+    const handleSaveConnection = (data: any) => {
+      if (!user?.id) return;
+      updateConnection.mutate({
+        user_id: user.id,
+        ...data
+      });
     };
 
     return (
@@ -110,7 +82,7 @@ export default function ConfiguracoesPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Email</Label>
-                                    <Input defaultValue="joao@synco.com" disabled className="bg-muted/50" />
+                                    <Input defaultValue={user?.email || ''} disabled className="bg-muted/50" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>WhatsApp</Label>
@@ -132,106 +104,31 @@ export default function ConfiguracoesPage() {
                             </Button>
                         </Card>
 
-                        <Card className="p-6">
-                            <h3 className="font-bold text-lg mb-6">Segurança</h3>
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Senha atual</Label>
-                                    <Input type="password" placeholder="••••••••" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Nova senha</Label>
-                                    <Input type="password" placeholder="••••••••" />
-                                </div>
-                                <Button variant="outline" className="w-full font-bold" onClick={() => toast.success('Senha alterada!')}>
-                                    <Shield className="w-4 h-4 mr-2" /> Alterar Senha
-                                </Button>
-                            </div>
-                        </Card>
-
-                        <Card className="p-6">
-                            <h3 className="font-bold text-lg mb-6">Notificações</h3>
-                            <div className="space-y-4">
-                                {[
-                                    { label: 'Automação executada', checked: true },
-                                    { label: 'Campanha concluída', checked: true },
-                                    { label: 'Falha de envio', checked: true },
-                                    { label: 'Novo produto em alta', checked: false },
-                                ].map(n => (
-                                    <div key={n.label} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 transition-colors">
-                                        <span className="text-sm font-medium">{n.label}</span>
-                                        <Switch defaultChecked={n.checked} />
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
                     </div>
                 </TabsContent>
 
                 <TabsContent value="affiliates" className="space-y-6 animate-in fade-in-50 duration-300">
-                    <div className="grid md:grid-cols-2 gap-4">
-                        {marketplaces.map(mp => (
-                            <Card key={mp.id} className={`p-5 transition-all ${mp.configured ? 'border-primary/20 bg-primary/5' : 'border-dashed'}`}>
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-3xl filter grayscale opacity-80">{mp.icon}</span>
-                                        <div>
-                                            <p className="font-bold text-sm tracking-tight">{mp.name}</p>
-                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{mp.description}</p>
-                                        </div>
-                                    </div>
-                                    <Badge variant="outline" className={mp.configured ? 'text-[10px] bg-primary text-primary-foreground' : 'text-[10px] text-muted-foreground'}>
-                                        {mp.configured ? 'CONFIGURADO' : 'PENDENTE'}
-                                    </Badge>
-                                </div>
-
-                                {editingMp === mp.id ? (
-                                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
-                                        <Input 
-                                            value={tempId} 
-                                            onChange={e => setTempId(e.target.value)} 
-                                            placeholder="Cole seu ID de afiliado" 
-                                            className="h-9 text-sm font-mono" 
-                                            autoFocus 
-                                        />
-                                        <div className="flex gap-2">
-                                            <Button size="sm" className="flex-1 font-bold" onClick={() => handleSaveMp(mp.id)}>Salvar</Button>
-                                            <Button size="sm" variant="ghost" onClick={() => setEditingMp(null)}>Cancelar</Button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {mp.configured ? (
-                                            <div className="px-3 py-2 rounded-lg bg-card border border-border/50 font-mono text-sm shadow-inner">
-                                                {mp.affiliate_id}
-                                            </div>
-                                        ) : (
-                                            <div className="px-3 py-2 rounded-lg bg-muted/20 border border-dashed text-xs text-muted-foreground italic text-center">
-                                                Nenhum ID configurado
-                                            </div>
-                                        )}
-                                        
-                                        <div className="flex items-start gap-2 text-[11px] text-muted-foreground leading-relaxed">
-                                            <HelpCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                                            <span>{MARKETPLACE_HELP[mp.id] || 'Consulte o painel do parceiro.'}</span>
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <Button size="sm" variant="outline" className="flex-1 font-bold text-xs"
-                                                onClick={() => { setEditingMp(mp.id); setTempId(mp.affiliate_id || ''); }}>
-                                                Configurar ID
-                                            </Button>
-                                            {mp.configured && (
-                                                <Button size="sm" variant="ghost" onClick={() => handleTestMp(mp.id)} disabled={testingId === mp.id}>
-                                                    {testingId === mp.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <TestTube className="w-3.5 h-3.5" />}
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </Card>
-                        ))}
-                    </div>
+                    {isLoadingCatalog || isLoadingConnections ? (
+                      <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-30">
+                        <Loader2 className="w-10 h-10 animate-spin text-kinetic-orange" />
+                        <span className="font-black text-sm uppercase tracking-widest">Sincronizando Marketplace...</span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                        {catalog?.map(mp => {
+                          const connection = connections?.find(c => c.marketplace_id === mp.id);
+                          return (
+                            <AffiliateSettingsCard 
+                              key={mp.id}
+                              marketplace={mp}
+                              connection={connection}
+                              isSaving={updateConnection.isPending}
+                              onSave={handleSaveConnection}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
                 </TabsContent>
 
                 {/* tabsContent restantes seriam implementados similarmente seguindo o padrão SYNCO */}
