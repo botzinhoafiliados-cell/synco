@@ -71,7 +71,7 @@ export class WasenderClient {
   }
 
   static async getStatus(sessionId: string) {
-    const res = await fetch(`${this.baseURL}/whatsapp-sessions/${sessionId}/status`, {
+    const res = await fetch(`${this.baseURL}/whatsapp-sessions/${sessionId}`, {
       method: 'GET',
       headers: this.headers
     });

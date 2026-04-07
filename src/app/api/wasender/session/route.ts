@@ -144,10 +144,9 @@ export async function GET(request: Request) {
     // 2. Checar status realtime na Wasender
     let realStatus;
     try {
-        const wasenderStatus = await WasenderClient.getStatus(sessionId);
-        // Mapear o status da wasender para o nosso domínio se necessário. 
-        // Ex: "AWAITING_SCAN" -> "qrcode_pending", "CONNECTED" -> "connected"
-        const remoteStatus = (wasenderStatus.status || '').toUpperCase();
+        const wasenderResponse = await WasenderClient.getStatus(sessionId);
+        const sessionData = wasenderResponse.data || wasenderResponse;
+        const remoteStatus = (sessionData.status || '').toUpperCase();
         
         if (remoteStatus.includes('CONNECTED')) realStatus = 'connected';
         else if (remoteStatus.includes('QR') || remoteStatus.includes('SCAN') || remoteStatus.includes('PENDING')) realStatus = 'qrcode_pending';
