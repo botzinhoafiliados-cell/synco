@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { TelegramClient } from '@/lib/telegram/client';
 
 export const dynamic = 'force-dynamic';
@@ -20,13 +19,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Campos obrigatórios: channelId, chatId e message' }, { status: 400 });
     }
 
-    // Buscar segredos com admin client (RLS bloqueia select para usuários normais)
-    const admin = createAdminClient();
-    const { data: secretData } = await admin
+    // Buscar segredos com filtro de user_id (RLS-compatible)
+    const { data: secretData } = await supabase
       .from('channel_secrets')
       .select('session_api_key')
       .eq('channel_id', channelId)
-      .maybeSingle();
+      .eq('user_id', session.user.id)
+      .single();
 
     const botToken = secretData?.session_api_key;
     if (!botToken) {
