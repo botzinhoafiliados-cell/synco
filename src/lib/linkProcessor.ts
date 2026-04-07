@@ -1,11 +1,21 @@
 // src/lib/linkProcessor.ts
+import { createClient } from './supabase/client';
+import { ShopeeAdapter } from './marketplaces/shopee';
+import { MarketplaceAdapter, MarketplaceConfig } from './marketplaces/adapter';
 
 export type Marketplace = 'Shopee' | 'Amazon' | 'Mercado Livre' | 'Magalu' | 'Unknown';
+
+export type ProcessingStatus = 
+  | 'processed' 
+  | 'missing_affiliate_config' 
+  | 'marketplace_unsupported' 
+  | 'invalid_url';
 
 export interface ProcessedProduct {
   id: string;
   name: string;
   marketplace: Marketplace;
+  status: ProcessingStatus;
   originalPrice: number;
   currentPrice: number;
   discountPercent: number;
@@ -14,83 +24,102 @@ export interface ProcessedProduct {
   affiliateUrl: string;
 }
 
+// Registro de adapters disponíveis
+const adapters: MarketplaceAdapter[] = [
+  new ShopeeAdapter(),
+  // Próximos adapters (Mercado Livre, etc) entram aqui
+];
+
+const KNOWN_MARKETPLACES = ['shopee', 'amazon', 'mercadolivre', 'magazineluiza', 'magalu'];
+
 /**
- * Utilitário para detecção de marketplace baseada em URL
+ * Utilitário para detecção de marketplace baseada em URL usando adapters reais
  */
 export function detectMarketplace(url: string): Marketplace {
-  const lowercaseUrl = url.toLowerCase();
-  
-  if (lowercaseUrl.includes('shopee.com.br')) return 'Shopee';
-  if (lowercaseUrl.includes('amazon.com.br')) return 'Amazon';
-  if (lowercaseUrl.includes('mercadolivre.com.br')) return 'Mercado Livre';
-  if (lowercaseUrl.includes('magazineluiza.com.br') || lowercaseUrl.includes('magalu.com')) return 'Magalu';
-  
+  const adapter = adapters.find(a => a.detect(url));
+  if (adapter) {
+    return adapter.name as Marketplace;
+  }
   return 'Unknown';
 }
 
 /**
- * Simula o processamento (scraping/conversão) de links
- * Retorna dados mockados para demonstração da UX
+ * Processamento real de links utilizando o contexto do usuário e adapters de marketplace.
+ * Não utiliza dados mockados/inventados conforme regras do projeto.
  */
-export async function processLinks(links: string[]): Promise<ProcessedProduct[]> {
-  // Simular delay de rede/processamento
-  await new Promise(resolve => setTimeout(resolve, 1500));
+export async function processLinks(links: string[], userId: string): Promise<ProcessedProduct[]> {
+  const supabase = createClient();
   
-  return links.filter(link => link.trim().length > 0).map((link, index) => {
-    const marketplace = detectMarketplace(link);
-    const id = `proc_${Date.now()}_${index}`;
-    
-    // Dados mockados baseados no marketplace
-    const mocks: Record<Marketplace, Partial<ProcessedProduct>> = {
-      'Shopee': {
-        name: 'Fone de Ouvido Bluetooth TWS i12 Pro',
-        originalPrice: 129.90,
-        currentPrice: 47.50,
-        discountPercent: 63,
-        imageUrl: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=200&h=200&fit=crop'
-      },
-      'Amazon': {
-        name: 'Kindle 11ª Geração (2022) — Leve, com tela de 300 ppi',
-        originalPrice: 499.00,
-        currentPrice: 449.00,
-        discountPercent: 10,
-        imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=200&h=200&fit=crop'
-      },
-      'Mercado Livre': {
-        name: 'Smart TV 50" 4K UHD LED Samsung',
-        originalPrice: 2899.00,
-        currentPrice: 2499.00,
-        discountPercent: 14,
-        imageUrl: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=200&h=200&fit=crop'
-      },
-      'Magalu': {
-        name: 'Fritadeira Elétrica Air Fryer Nell Fit 3.2L',
-        originalPrice: 349.00,
-        currentPrice: 269.90,
-        discountPercent: 22,
-        imageUrl: 'https://images.unsplash.com/photo-1626074353765-517a681e40be?w=200&h=200&fit=crop'
-      },
-      'Unknown': {
-        name: 'Produto Desconhecido',
+  // 1. Buscar configurações de marketplace do usuário
+  const { data: userConfigs, error } = await supabase
+    .from('user_marketplaces')
+    .select('marketplace_id, affiliate_id, affiliate_code, marketplaces(name)')
+    .eq('user_id', userId)
+    .eq('is_active', true);
+
+  if (error) {
+    console.error('Erro ao buscar configurações de marketplace:', error);
+  }
+
+  // 2. Mapear configurações por nome de marketplace para acesso rápido
+  const configMap: Record<string, MarketplaceConfig> = {};
+  userConfigs?.forEach((uc: any) => {
+    const marketplaceName = uc.marketplaces?.name;
+    if (marketplaceName) {
+      configMap[marketplaceName] = {
+        affiliate_id: uc.affiliate_id,
+        affiliate_code: uc.affiliate_code
+      };
+    }
+  });
+
+  // 3. Processar cada link
+  const processed = await Promise.all(
+    links.filter(link => link.trim().length > 0).map(async (link, index) => {
+      const id = `proc_${Date.now()}_${index}`;
+      let status: ProcessingStatus = 'processed';
+      
+      const adapter = adapters.find(a => a.detect(link));
+      const marketplace = (adapter?.name as Marketplace) || 'Unknown';
+      
+      const config = configMap[marketplace];
+      let affiliateUrl = link;
+
+      // Determinar Status Semântico
+      if (adapter) {
+        if (!config) {
+          status = 'missing_affiliate_config';
+          affiliateUrl = link; // Mantém original
+        } else {
+          try {
+            affiliateUrl = adapter.buildAffiliateUrl(link, config);
+            status = 'processed';
+          } catch (err) {
+            console.warn(`Falha na conversão para ${marketplace}:`, err);
+            status = 'invalid_url';
+          }
+        }
+      } else {
+        // Verificar se é um marketplace conhecido mas sem adapter
+        const isKnown = KNOWN_MARKETPLACES.some(m => link.toLowerCase().includes(m));
+        status = isKnown ? 'marketplace_unsupported' : 'invalid_url';
+      }
+
+      // Conforme regra: não inventar título, preço ou imagem se não houver extração real
+      return {
+        id,
+        name: marketplace !== 'Unknown' ? `${marketplace} Item` : 'Link Processado',
+        marketplace,
+        status,
         originalPrice: 0,
         currentPrice: 0,
         discountPercent: 0,
-        imageUrl: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=200&h=200&fit=crop'
-      }
-    };
-    
-    const mockData = mocks[marketplace] || mocks['Unknown'];
-    
-    return {
-      id,
-      name: mockData.name!,
-      marketplace,
-      originalPrice: mockData.originalPrice!,
-      currentPrice: mockData.currentPrice!,
-      discountPercent: mockData.discountPercent!,
-      imageUrl: mockData.imageUrl!,
-      originalUrl: link,
-      affiliateUrl: `https://sync.af/${id}`
-    };
-  });
+        imageUrl: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=200&h=200&fit=crop', // Placeholder neutro
+        originalUrl: link,
+        affiliateUrl
+      };
+    })
+  );
+
+  return processed;
 }

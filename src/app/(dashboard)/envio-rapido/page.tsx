@@ -82,7 +82,7 @@ export default function EnvioRapidoPage() {
     setIsProcessing(true);
     try {
       const links = linksInput.split('\n').filter(l => l.trim());
-      const results = await processLinks(links);
+      const results = await processLinks(links, user?.id as string);
       setProcessedProducts(results);
       toast.success(`${results.length} link(s) processado(s) com sucesso!`);
     } catch (error) {
