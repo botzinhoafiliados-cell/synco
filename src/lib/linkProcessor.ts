@@ -3,6 +3,7 @@
 
 import { MarketplaceAdapter, AffiliateResult } from './marketplaces/BaseAdapter';
 import { ShopeeAdapter } from './marketplaces/ShopeeAdapter';
+import { marketplaceService } from '@/services/supabase/marketplace-service';
 
 export type Marketplace = 'Shopee' | 'Amazon' | 'Mercado Livre' | 'Magalu' | 'Unknown';
 
@@ -48,12 +49,21 @@ function findAdapter(url: string): MarketplaceAdapter | null {
 }
 
 /**
- * Processa uma lista de links usando os adapters reais.
+ * Processa uma lista de links usando os adapters reais, com cache opcional e conexões de usuário.
  * Para marketplaces sem adapter implementado, retorna dados básicos com fallback.
  */
-export async function processLinks(links: string[]): Promise<ProcessedProduct[]> {
+export async function processLinks(links: string[], userId?: string): Promise<ProcessedProduct[]> {
   const validLinks = links.filter(link => link.trim().length > 0);
   const results: ProcessedProduct[] = [];
+
+  let userConnections: any[] = [];
+  if (userId) {
+    try {
+      userConnections = await marketplaceService.getUserConnections(userId);
+    } catch (error) {
+      console.warn('linkProcessor: Failed to fetch user connections', error);
+    }
+  }
 
   for (const link of validLinks) {
     const id = `proc_${Date.now()}_${results.length}`;
@@ -63,7 +73,10 @@ export async function processLinks(links: string[]): Promise<ProcessedProduct[]>
     if (adapter) {
       // ─── Processamento Real via Adapter ────────────────────────────────
       try {
-        const result: AffiliateResult = await adapter.process(link);
+        const dbMarketplaceId = marketplace.toLowerCase().replace(' ', '');
+        const connection = userConnections.find(c => c.marketplace_id === dbMarketplaceId);
+        
+        const result: AffiliateResult = await adapter.process(link, connection);
 
         results.push({
           id,

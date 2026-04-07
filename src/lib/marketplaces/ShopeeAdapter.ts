@@ -2,6 +2,7 @@
 // Adapter para Shopee — limpeza de URL, resolução de short-links e geração de link de afiliado.
 
 import { MarketplaceAdapter, ProductMetadata } from './BaseAdapter';
+import { UserMarketplaceConnection } from '@/types/marketplace';
 
 export class ShopeeAdapter extends MarketplaceAdapter {
   readonly name = 'Shopee';
@@ -107,17 +108,25 @@ export class ShopeeAdapter extends MarketplaceAdapter {
 
   // ─── Link de Afiliado ───────────────────────────────────────────────────
 
-  async generateAffiliateLink(cleanUrl: string): Promise<string> {
-    // Se houver credenciais de API de Afiliado configuradas, usar
-    const affiliateId = process.env.SHOPEE_AFFILIATE_ID;
+  async generateAffiliateLink(cleanUrl: string, connection?: UserMarketplaceConnection): Promise<string> {
+    // Se houver credenciais passadas do banco
+    const affiliateId = connection?.is_active ? connection.affiliate_id : null;
+    const fallbackEnvId = process.env.SHOPEE_AFFILIATE_ID;
+    
+    const resolvedId = affiliateId || fallbackEnvId;
 
-    if (affiliateId) {
+    if (resolvedId) {
       // Formato básico do link de afiliado Shopee
-      // A Shopee usa o padrão: https://shope.ee/an_affiliate_link
-      // Mas para geração real via API, precisaríamos do Open Platform
       try {
         const encoded = encodeURIComponent(cleanUrl);
-        return `https://shope.ee/redirect?url=${encoded}&af_id=${affiliateId}`;
+        let link = `https://shope.ee/redirect?url=${encoded}&af_id=${resolvedId}`;
+        
+        // Injetar rastreio adicional (utm_source)
+        if (connection?.affiliate_code && connection.is_active) {
+            link += `&utm_source=${connection.affiliate_code}`;
+        }
+        
+        return link;
       } catch {
         return cleanUrl;
       }

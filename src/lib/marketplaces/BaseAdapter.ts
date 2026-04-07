@@ -1,5 +1,6 @@
 // src/lib/marketplaces/BaseAdapter.ts
 // Classe abstrata que define o contrato para cada adaptador de marketplace.
+import { UserMarketplaceConnection } from '@/types/marketplace';
 
 export interface ProductMetadata {
   name: string;
@@ -42,16 +43,16 @@ export abstract class MarketplaceAdapter {
   /**
    * Gera o link de afiliado a partir da URL limpa.
    */
-  abstract generateAffiliateLink(cleanUrl: string): Promise<string>;
+  abstract generateAffiliateLink(cleanUrl: string, connection?: UserMarketplaceConnection): Promise<string>;
 
   /**
    * Método de conveniência que executa o pipeline completo:
    * cleanUrl → fetchMetadata → generateAffiliateLink
    */
-  async process(rawUrl: string): Promise<AffiliateResult> {
+  async process(rawUrl: string, connection?: UserMarketplaceConnection): Promise<AffiliateResult> {
     const cleanedUrl = await this.cleanUrl(rawUrl);
     const metadata = await this.fetchMetadata(cleanedUrl);
-    const affiliateUrl = await this.generateAffiliateLink(cleanedUrl);
+    const affiliateUrl = await this.generateAffiliateLink(cleanedUrl, connection);
 
     return {
       originalUrl: rawUrl,
