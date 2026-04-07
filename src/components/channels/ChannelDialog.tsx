@@ -36,6 +36,8 @@ const formSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   type: z.enum(['whatsapp', 'telegram']),
   description: z.string().optional(),
+  session_api_key: z.string().optional(),
+  webhook_secret: z.string().optional(),
 });
 
 interface ChannelDialogProps {
@@ -138,12 +140,54 @@ export function ChannelDialog({
                 </FormItem>
               )}
             />
+
+            {form.watch('type') === 'whatsapp' && (
+              <div className="space-y-4 pt-4 border-t border-dashed">
+                <h4 className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  Configuração Wasender
+                </h4>
+                <FormField
+                  control={form.control}
+                  name="session_api_key"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs uppercase font-bold text-muted-foreground">Session API Key</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Chave do dispositivo no painel Wasender" {...field} />
+                      </FormControl>
+                      <FormDescription className="text-[10px]">
+                        Esta chave será armazenada de forma segura e nunca exposta ao frontend.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="webhook_secret"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs uppercase font-bold text-muted-foreground">Webhook Secret</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Defina um secret para o webhook" {...field} />
+                      </FormControl>
+                      <FormDescription className="text-[10px]">
+                        Usado para validar a assinatura das notificações da Wasender.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
             <DialogFooter className="pt-4">
               <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="min-w-[100px]">
-                {isSubmitting ? 'Salvando...' : 'Salvar Canal'}
+              <Button type="submit" disabled={isSubmitting} className="min-w-[100px] font-bold">
+                {isSubmitting ? 'Salvando...' : (initialData ? 'Atualizar Canal' : 'Criar Canal')}
               </Button>
             </DialogFooter>
           </form>

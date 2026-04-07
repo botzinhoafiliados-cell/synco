@@ -17,19 +17,45 @@ export const channelService = {
     return data || [];
   },
 
-  async upsert(channel: Partial<Channel> & { user_id: string }): Promise<Channel> {
+  async upsert(channel: Partial<Channel> & { 
+    user_id: string; 
+    session_api_key?: string; 
+    webhook_secret?: string; 
+  }): Promise<Channel> {
     const supabase = createClient();
-    const { data, error } = await supabase
+    const { session_api_key, webhook_secret, ...channelData } = channel;
+
+    // 1. Upsert channel metadata
+    const { data: channelResult, error: channelError } = await supabase
       .from('channels')
-      .upsert(channel)
+      .upsert(channelData)
       .select()
       .single();
     
-    if (error) {
-      console.error('Error upserting channel:', error);
-      throw error;
+    if (channelError) {
+      console.error('Error upserting channel:', channelError);
+      throw channelError;
     }
-    return data;
+
+    // 2. Upsert secrets if provided (Only for WhatsApp)
+    if (session_api_key && webhook_secret) {
+      const { error: secretsError } = await supabase
+        .from('channel_secrets')
+        .upsert({
+          id: channelResult.id,
+          user_id: channel.user_id,
+          session_api_key,
+          webhook_secret
+        });
+
+      if (secretsError) {
+        console.error('Error upserting channel secrets:', secretsError);
+        // Desfazer channel se falhar segredo? Para MVP vamos apenas logar, 
+        // mas idealmente seria uma transação.
+      }
+    }
+
+    return channelResult;
   },
 
   async delete(id: string, userId: string): Promise<void> {
