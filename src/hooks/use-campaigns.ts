@@ -41,3 +41,24 @@ export function useDeleteCampaign() {
     },
   });
 }
+
+export function useCampaignStats(campaignId?: string) {
+  return useQuery({
+    queryKey: ['campaign-stats', campaignId],
+    queryFn: () => campaignId ? campaignService.getStats(campaignId) : null,
+    enabled: !!campaignId,
+    refetchInterval: (query) => {
+      const stats = query.state.data as any;
+      // Se ainda houver jobs pendentes ou em processamento, continua o refresh a cada 5s
+      return (stats?.pending > 0 || stats?.processing > 0) ? 5000 : false;
+    }
+  });
+}
+
+export function useCampaignJobs(campaignId: string | undefined, page: number = 1) {
+  return useQuery({
+    queryKey: ['campaign-jobs', campaignId, page],
+    queryFn: () => campaignId ? campaignService.getJobsPaginated(campaignId, page) : null,
+    enabled: !!campaignId,
+  });
+}

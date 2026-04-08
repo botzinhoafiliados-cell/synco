@@ -196,5 +196,52 @@ export const campaignService = {
       console.error('Error deleting campaign:', error);
       throw error;
     }
+  },
+
+  async getStats(campaignId: string) {
+    const supabase = createClient();
+    
+    // Agregação eficiente agrupada por status usando rpc ou queries rápidas (count select)
+    // Para simplificar no MVP e usar o PostgREST nativo com índices:
+    const { data, error } = await supabase
+      .from('send_jobs')
+      .select('status')
+      .eq('campaign_id', campaignId);
+
+    if (error) throw error;
+
+    const stats = {
+      total: data.length,
+      pending: data.filter(j => j.status === 'pending').length,
+      processing: data.filter(j => j.status === 'processing').length,
+      completed: data.filter(j => j.status === 'sent' || j.status === 'completed').length,
+      failed: data.filter(j => j.status === 'failed').length,
+      cancelled: data.filter(j => j.status === 'cancelled').length,
+    };
+
+    return stats;
+  },
+
+  async getJobsPaginated(campaignId: string, page: number = 1, pageSize: number = 20) {
+    const supabase = createClient();
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await supabase
+      .from('send_jobs')
+      .select('*', { count: 'exact' })
+      .eq('campaign_id', campaignId)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+
+    return {
+      jobs: data,
+      total: count || 0,
+      page,
+      pageSize,
+      totalPages: Math.ceil((count || 0) / pageSize)
+    };
   }
 };

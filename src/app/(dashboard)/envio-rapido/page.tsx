@@ -1,4 +1,3 @@
-// src/app/(dashboard)/envio-rapido/page.tsx
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -6,9 +5,9 @@ import PageHeader from '@/components/shared/PageHeader';
 import { KineticButton } from '@/components/ui/KineticButton';
 import { TactileCard } from '@/components/ui/TactileCard';
 import { Button } from '@/components/ui/button';
-import { 
-  SendHorizonal, 
-  LayoutList, 
+import {
+  SendHorizonal,
+  LayoutList,
   Sparkles,
   CheckCircle2,
   AlertCircle,
@@ -46,7 +45,6 @@ export default function EnvioRapidoPage() {
   const { mutate: createCampaign, isPending: isSending } = useCreateCampaign();
   const router = useRouter();
 
-  // State Operacional (Base44 Flow)
   const [linksInput, setLinksInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedProducts, setProcessedProducts] = useState<ProcessedProduct[]>([]);
@@ -56,33 +54,38 @@ export default function EnvioRapidoPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // States para Teste Direto
   const { data: channels, isLoading: loadingChannels } = useChannels(user?.id);
   const [testChannelId, setTestChannelId] = useState('');
   const [testPhone, setTestPhone] = useState('');
   const [testMessage, setTestMessage] = useState('Oi, este é um teste do motor M1 SYNCO! 🚀');
   const [isTesting, setIsTesting] = useState(false);
 
-  // Auto-seleciona o primeiro canal quando carregar
   useEffect(() => {
     if (channels && channels.length > 0 && !testChannelId) {
       setTestChannelId(channels[0].id);
     }
   }, [channels, testChannelId]);
 
-  // Detectar o canal selecionado e seu tipo
-  const selectedChannel = useMemo(() => channels?.find(c => c.id === testChannelId), [channels, testChannelId]);
+  const selectedChannel = useMemo(
+    () => channels?.find(c => c.id === testChannelId),
+    [channels, testChannelId]
+  );
   const selectedChannelType = selectedChannel?.type || 'whatsapp';
 
-  const linksCount = useMemo(() => linksInput.split('\n').filter(l => l.trim()).length, [linksInput]);
+  const linksCount = useMemo(
+    () => linksInput.split('\n').filter(l => l.trim()).length,
+    [linksInput]
+  );
 
   const handleTestSend = async () => {
     if (!testChannelId || !testPhone || !testMessage) {
       toast.error('Preencha os campos obrigatórios do teste.');
       return;
     }
+
     setIsTesting(true);
     toast.info('Iniciando requisição para API...');
+
     try {
       let apiUrl: string;
       let body: Record<string, string>;
@@ -100,12 +103,13 @@ export default function EnvioRapidoPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-      
+
       const text = await res.text();
-      let data;
+      let data: any;
+
       try {
         data = JSON.parse(text);
-      } catch (parseErr) {
+      } catch {
         alert('ERRO CRÍTICO DO SERVIDOR:\n' + text.substring(0, 200));
         toast.error('O Servidor retornou um erro não interpretável (verifique o log)');
         return;
@@ -114,7 +118,7 @@ export default function EnvioRapidoPage() {
       if (!res.ok) {
         throw new Error(data.error || 'Erro ao enviar via API');
       }
-      
+
       const platformName = selectedChannelType === 'telegram' ? 'Telegram' : 'Wasender';
       alert(`SUCESSO! O ${platformName} aceitou a mensagem.\nRetorno: ` + JSON.stringify(data.response).substring(0, 100));
       toast.success('Envio direto disparado com sucesso!');
@@ -126,22 +130,32 @@ export default function EnvioRapidoPage() {
     }
   };
 
-  // Gerar textos automaticamente ao processar produtos ou mudar o tom
   useEffect(() => {
     const newTexts: Record<string, string> = { ...generatedTexts };
     const toneLabel = TONE_OPTIONS.find(t => t.value === tone)?.label || 'Automático';
-    
+
     processedProducts.forEach(p => {
-      // Se não tem texto ainda ou o tom mudou, gera um novo
       if (!newTexts[p.id]) {
         if (p.metadata_failed) {
           const productName = p.name || 'Produto Shopee';
-          newTexts[p.id] = `🔥 *OFERTA DETECTADA* [Tom: ${toneLabel}]\n\n*${productName}*\n\n🚀 Compre aqui: ${p.affiliateUrl}\n\n#oferta #promoção #${p.marketplace.toLowerCase()}`;
+          newTexts[p.id] =
+            `🔥 *OFERTA DETECTADA* [Tom: ${toneLabel}]\n\n` +
+            `*${productName}*\n\n` +
+            `🚀 Compre aqui: ${p.affiliateUrl}\n\n` +
+            `#oferta #promoção #${p.marketplace.toLowerCase()}`;
         } else {
-          newTexts[p.id] = `🔥 *OFERTA DETECTADA* [Tom: ${toneLabel}]\n\n*${p.name}*\n\n💰 De: ~~R$ ${p.originalPrice.toFixed(2)}~~\n✅ Por: *R$ ${p.currentPrice.toFixed(2)}*\n📉 *${p.discountPercent}% de DESCONTO!*\n\n🚀 Compre aqui: ${p.affiliateUrl}\n\n#oferta #promoção #${p.marketplace.toLowerCase()}`;
+          newTexts[p.id] =
+            `🔥 *OFERTA DETECTADA* [Tom: ${toneLabel}]\n\n` +
+            `*${p.name}*\n\n` +
+            `💰 De: ~~R$ ${p.originalPrice.toFixed(2)}~~\n` +
+            `✅ Por: *R$ ${p.currentPrice.toFixed(2)}*\n` +
+            `📉 *${p.discountPercent}% de DESCONTO!*\n\n` +
+            `🚀 Compre aqui: ${p.affiliateUrl}\n\n` +
+            `#oferta #promoção #${p.marketplace.toLowerCase()}`;
         }
       }
     });
+
     setGeneratedTexts(newTexts);
   }, [processedProducts, tone]);
 
@@ -152,6 +166,7 @@ export default function EnvioRapidoPage() {
     }
 
     setIsProcessing(true);
+
     try {
       const links = linksInput.split('\n').filter(l => l.trim());
       const res = await fetch('/api/links/process', {
@@ -159,11 +174,11 @@ export default function EnvioRapidoPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ links })
       });
-      
+
       if (!res.ok) {
         throw new Error('Falha na API de processamento');
       }
-      
+
       const data = await res.json();
       setProcessedProducts(data.results);
       toast.success(`${data.results.length} link(s) processado(s) com sucesso!`);
@@ -176,7 +191,7 @@ export default function EnvioRapidoPage() {
   };
 
   const handleToggleDestination = (id: string) => {
-    setSelectedDestinations(prev => 
+    setSelectedDestinations(prev =>
       prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
     );
   };
@@ -198,20 +213,23 @@ export default function EnvioRapidoPage() {
       })),
       destinations: selectedDestinations.map(id => ({
         type: 'list' as const,
-        id: id
+        id
       }))
     };
 
-    createCampaign({ userId: user?.id as string, dto: campaignData }, {
-      onSuccess: () => {
-        setIsSuccess(true);
-        toast.success('Campanha enviada com sucesso!');
-      },
-      onError: (error) => {
-        console.error('Erro ao criar campanha:', error);
-        toast.error('Erro ao realizar o envio.');
+    createCampaign(
+      { userId: user?.id as string, dto: campaignData },
+      {
+        onSuccess: () => {
+          setIsSuccess(true);
+          toast.success('Campanha enviada com sucesso!');
+        },
+        onError: error => {
+          console.error('Erro ao criar campanha:', error);
+          toast.error('Erro ao realizar o envio.');
+        }
       }
-    });
+    );
   };
 
   if (isSuccess) {
@@ -220,13 +238,15 @@ export default function EnvioRapidoPage() {
         <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mb-6 shadow-glow-orange/20">
           <CheckCircle2 className="w-10 h-10 text-emerald-500" />
         </div>
-        <h2 className="text-3xl font-black uppercase tracking-tight mb-2 font-headline">Transmissão Sincronizada!</h2>
+        <h2 className="text-3xl font-black uppercase tracking-tight mb-2 font-headline">
+          Transmissão Sincronizada!
+        </h2>
         <p className="text-white/40 mb-8 max-w-sm mx-auto text-sm font-medium">
           Seus produtos foram processados e os registros de envio foram salvos com sucesso.
         </p>
         <div className="flex gap-4">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="font-black uppercase tracking-widest text-[10px] bg-white/5 rounded-xl px-8 h-12"
             onClick={() => {
               setIsSuccess(false);
@@ -254,42 +274,54 @@ export default function EnvioRapidoPage() {
 
       <Tabs defaultValue="broadcast" className="w-full">
         <TabsList className="mb-8 bg-deep-void shadow-skeuo-pressed border p-1 rounded-xl">
-          <TabsTrigger value="broadcast" className="text-xs font-black uppercase tracking-widest px-6 data-[state=active]:bg-kinetic-orange/10 data-[state=active]:text-kinetic-orange">
+          <TabsTrigger
+            value="broadcast"
+            className="text-xs font-black uppercase tracking-widest px-6 data-[state=active]:bg-kinetic-orange/10 data-[state=active]:text-kinetic-orange"
+          >
             🚀 Envio em Massa (Grupos)
           </TabsTrigger>
-          <TabsTrigger value="test" className="text-xs font-black uppercase tracking-widest px-6 data-[state=active]:bg-kinetic-orange/10 data-[state=active]:text-kinetic-orange">
+          <TabsTrigger
+            value="test"
+            className="text-xs font-black uppercase tracking-widest px-6 data-[state=active]:bg-kinetic-orange/10 data-[state=active]:text-kinetic-orange"
+          >
             🔬 Teste de Conexão
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="broadcast" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Lado Esquerdo: Input e Processamento */}
             <div className="lg:col-span-7 space-y-8">
-              
-              {/* 1. Área de Links */}
               <TactileCard className="p-6 relative overflow-hidden group border-none">
                 <div className="absolute -top-12 -right-12 w-32 h-32 bg-kinetic-orange/5 blur-3xl rounded-full pointer-events-none" />
-                
+
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shadow-skeuo-flat group-hover:shadow-glow-orange/20 transition-all">
                       <Link2 className="w-4 h-4 text-kinetic-orange" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-black text-sm uppercase tracking-widest font-headline">Entrada de Dados</span>
-                      <span className="text-[10px] font-bold text-white/20 uppercase">Cole os links originais abaixo</span>
+                      <span className="font-black text-sm uppercase tracking-widest font-headline">
+                        Entrada de Dados
+                      </span>
+                      <span className="text-[10px] font-bold text-white/20 uppercase">
+                        Cole os links originais abaixo
+                      </span>
                     </div>
                   </div>
-                  <Badge variant="outline" className="bg-deep-void border-none shadow-skeuo-pressed text-[10px] font-black uppercase tracking-widest px-3 h-7">
+                  <Badge
+                    variant="outline"
+                    className="bg-deep-void border-none shadow-skeuo-pressed text-[10px] font-black uppercase tracking-widest px-3 h-7"
+                  >
                     {linksCount} link(s) detectado(s)
                   </Badge>
                 </div>
 
-                <Textarea 
+                <Textarea
                   value={linksInput}
-                  onChange={(e) => setLinksInput(e.target.value)}
-                  placeholder={"https://shopee.com.br/produto-abc\nhttps://amazon.com.br/dp/B08X...\nhttps://produto.mercadolivre.com.br/..."}
+                  onChange={e => setLinksInput(e.target.value)}
+                  placeholder={
+                    'https://shopee.com.br/produto-abc\nhttps://amazon.com.br/dp/B08X...\nhttps://produto.mercadolivre.com.br/...'
+                  }
                   className="min-h-[140px] bg-deep-void shadow-skeuo-pressed border-none text-xs font-mono p-4 rounded-xl focus-visible:ring-1 focus-visible:ring-kinetic-orange/30 placeholder:text-white/10 resize-none leading-relaxed"
                 />
 
@@ -298,48 +330,57 @@ export default function EnvioRapidoPage() {
                     <AlertCircle className="w-3 h-3" />
                     Separe por uma linha para detecção automática
                   </div>
-                  <KineticButton 
-                    onClick={handleProcess} 
+                  <KineticButton
+                    onClick={handleProcess}
                     className="h-10 px-6 font-black text-[10px] uppercase tracking-widest"
                     disabled={isProcessing || !linksInput.trim()}
                   >
                     {isProcessing ? (
-                      <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> Sincronizando...</>
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> Sincronizando...
+                      </>
                     ) : (
-                      <><Sparkles className="w-3.5 h-3.5 mr-2" /> Processar Links</>
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 mr-2" /> Processar Links
+                      </>
                     )}
                   </KineticButton>
                 </div>
               </TactileCard>
 
-              {/* 2. Tonalidade da IA */}
               <TactileCard className="p-6 border-none">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shadow-skeuo-flat">
                     <Sparkles className="w-4 h-4 text-purple-400" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-black text-sm uppercase tracking-widest font-headline">Tonalidade da IA</span>
-                    <span className="text-[10px] font-bold text-white/20 uppercase">Ajuste o "Vibe" da conversão</span>
+                    <span className="font-black text-sm uppercase tracking-widest font-headline">
+                      Tonalidade da IA
+                    </span>
+                    <span className="text-[10px] font-bold text-white/20 uppercase">
+                      Ajuste o "Vibe" da conversão
+                    </span>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                  {TONE_OPTIONS.map((opt) => (
+                  {TONE_OPTIONS.map(opt => (
                     <button
                       key={opt.value}
                       onClick={() => setTone(opt.value)}
                       className={cn(
-                        "flex flex-col items-start p-3 rounded-2xl border-none transition-all w-[140px] text-left",
-                        tone === opt.value 
-                          ? "bg-kinetic-orange/10 shadow-skeuo-pressed ring-1 ring-kinetic-orange/50" 
-                          : "bg-deep-void shadow-skeuo-pressed opacity-50 hover:opacity-80 active:scale-95"
+                        'flex flex-col items-start p-3 rounded-2xl border-none transition-all w-[140px] text-left',
+                        tone === opt.value
+                          ? 'bg-kinetic-orange/10 shadow-skeuo-pressed ring-1 ring-kinetic-orange/50'
+                          : 'bg-deep-void shadow-skeuo-pressed opacity-50 hover:opacity-80 active:scale-95'
                       )}
                     >
-                      <span className={cn(
-                        "text-xs font-black uppercase tracking-widest mb-1",
-                        tone === opt.value ? "text-kinetic-orange" : "text-white/40"
-                      )}>
+                      <span
+                        className={cn(
+                          'text-xs font-black uppercase tracking-widest mb-1',
+                          tone === opt.value ? 'text-kinetic-orange' : 'text-white/40'
+                        )}
+                      >
                         {opt.label.split(' ')[1]}
                       </span>
                       <span className="text-[10px] font-bold text-white/20 leading-tight">
@@ -350,16 +391,15 @@ export default function EnvioRapidoPage() {
                 </div>
               </TactileCard>
 
-              {/* 3. Resultados do Processamento */}
               {processedProducts.length > 0 && (
                 <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
                   <div className="flex items-center gap-3 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/30 italic">
                     Resultados Operacionais ({processedProducts.length})
                   </div>
-                  {processedProducts.map((product) => (
+
+                  {processedProducts.map(product => (
                     <TactileCard key={product.id} className="p-0 overflow-hidden border-none group">
                       <div className="flex flex-col md:flex-row">
-                        {/* Imagem e Badge Lateral */}
                         <div className="w-full md:w-32 bg-deep-void/50 p-4 flex flex-col items-center justify-center border-r border-white/5 bg-gradient-to-b from-transparent to-white/5">
                           <div className="w-20 h-20 rounded-xl overflow-hidden shadow-skeuo-flat group-hover:shadow-glow-orange/20 transition-all duration-500 bg-deep-void relative">
                             {product.metadata_failed || !product.imageUrl ? (
@@ -367,56 +407,79 @@ export default function EnvioRapidoPage() {
                                 <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mb-1.5 shadow-skeuo-pressed">
                                   <Info className="w-3.5 h-3.5 text-white/20" />
                                 </div>
-                                <span className="text-[8px] font-black uppercase tracking-widest text-white/30 text-center px-1">Img Indisponível</span>
+                                <span className="text-[8px] font-black uppercase tracking-widest text-white/30 text-center px-1">
+                                  Img Indisponível
+                                </span>
                               </div>
                             ) : (
-                              <img src={product.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                              <img
+                                src={product.imageUrl}
+                                alt=""
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                              />
                             )}
                             <div className="absolute top-1 right-1">
-                              <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-none text-[7px] font-black uppercase tracking-tighter h-4 px-1.5">
+                              <Badge
+                                variant="outline"
+                                className="bg-black/60 backdrop-blur-md border-none text-[7px] font-black uppercase tracking-tighter h-4 px-1.5"
+                              >
                                 {product.marketplace}
                               </Badge>
                             </div>
                           </div>
                         </div>
 
-                        {/* Conteúdo Info & Editor */}
                         <div className="flex-1 p-5 lg:p-6 space-y-4">
                           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                             <div className="flex-1 space-y-2">
                               <h4 className="text-[13px] font-black uppercase tracking-wider text-white/90 line-clamp-1 font-headline group-hover:text-kinetic-orange transition-colors">
                                 {product.name}
                               </h4>
-                              
+
                               <div className="flex flex-wrap items-center gap-3">
                                 {!product.metadata_failed && product.currentPrice > 0 ? (
                                   <div className="flex items-center gap-3">
-                                    <span className="text-[13px] font-black text-kinetic-orange">R$ {product.currentPrice.toFixed(2)}</span>
+                                    <span className="text-[13px] font-black text-kinetic-orange">
+                                      R$ {product.currentPrice.toFixed(2)}
+                                    </span>
                                     {product.originalPrice > product.currentPrice && (
-                                      <span className="text-[10px] font-bold text-white/20 line-through decoration-white/10">R$ {product.originalPrice.toFixed(2)}</span>
+                                      <span className="text-[10px] font-bold text-white/20 line-through decoration-white/10">
+                                        R$ {product.originalPrice.toFixed(2)}
+                                      </span>
                                     )}
                                     {product.discountPercent > 0 && (
-                                      <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">-{product.discountPercent}%</span>
+                                      <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                        -{product.discountPercent}%
+                                      </span>
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest bg-white/5 px-2 py-1 rounded-lg">Preço sob consulta</span>
+                                  <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest bg-white/5 px-2 py-1 rounded-lg">
+                                    Preço sob consulta
+                                  </span>
                                 )}
 
-                                <Badge variant="outline" className="bg-kinetic-orange/10 text-kinetic-orange border border-kinetic-orange/20 px-2 h-5 text-[8px] font-black uppercase tracking-widest shadow-glow-orange/5">
+                                <Badge
+                                  variant="outline"
+                                  className="bg-kinetic-orange/10 text-kinetic-orange border border-kinetic-orange/20 px-2 h-5 text-[8px] font-black uppercase tracking-widest shadow-glow-orange/5"
+                                >
                                   Tracking Oficial Ativo
                                 </Badge>
+
                                 {product.commissionRate != null && product.commissionRate > 0 && (
-                                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 h-5 text-[8px] font-black uppercase tracking-widest">
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 h-5 text-[8px] font-black uppercase tracking-widest"
+                                  >
                                     💰 {(product.commissionRate * 100).toFixed(1)}% comissão
                                   </Badge>
                                 )}
                               </div>
                             </div>
-                            
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               className="h-8 w-8 p-0 rounded-lg bg-white/5 hover:bg-kinetic-orange/10 hover:text-kinetic-orange transition-colors"
                               onClick={() => setEditingId(editingId === product.id ? null : product.id)}
                             >
@@ -425,20 +488,22 @@ export default function EnvioRapidoPage() {
                           </div>
 
                           <div className="relative">
-                            <Textarea 
+                            <Textarea
                               value={generatedTexts[product.id] || ''}
                               disabled={editingId !== product.id}
-                              onChange={(e) => setGeneratedTexts(prev => ({ ...prev, [product.id]: e.target.value }))}
+                              onChange={e =>
+                                setGeneratedTexts(prev => ({ ...prev, [product.id]: e.target.value }))
+                              }
                               className={cn(
-                                "min-h-[120px] text-[11px] font-mono leading-relaxed p-4 rounded-xl border-none transition-all resize-none",
-                                editingId === product.id 
-                                  ? "bg-deep-void shadow-skeuo-pressed focus-visible:ring-1 focus-visible:ring-kinetic-orange/30 text-white/90" 
-                                  : "bg-black/20 text-white/40 cursor-not-allowed"
+                                'min-h-[120px] text-[11px] font-mono leading-relaxed p-4 rounded-xl border-none transition-all resize-none',
+                                editingId === product.id
+                                  ? 'bg-deep-void shadow-skeuo-pressed focus-visible:ring-1 focus-visible:ring-kinetic-orange/30 text-white/90'
+                                  : 'bg-black/20 text-white/40 cursor-not-allowed'
                               )}
                             />
                             {editingId === product.id && (
                               <div className="absolute top-2 right-2 flex gap-2">
-                                <button 
+                                <button
                                   onClick={() => setEditingId(null)}
                                   className="px-2 py-1 bg-emerald-500 text-white text-[9px] font-black uppercase rounded shadow-lg animate-in zoom-in"
                                 >
@@ -455,52 +520,60 @@ export default function EnvioRapidoPage() {
               )}
             </div>
 
-            {/* Lado Direito: Destinos e Resumo */}
             <div className="lg:col-span-5 space-y-8 flex flex-col">
-              
-              {/* 4. Destinos */}
               <TactileCard className="p-6 border-none">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shadow-skeuo-flat">
                     <LayoutList className="w-4 h-4 text-blue-400" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-black text-sm uppercase tracking-widest font-headline">Canais de Destino</span>
-                    <span className="text-[10px] font-bold text-white/20 uppercase">Onde a oferta será implantada</span>
+                    <span className="font-black text-sm uppercase tracking-widest font-headline">
+                      Canais de Destino
+                    </span>
+                    <span className="text-[10px] font-bold text-white/20 uppercase">
+                      Onde a oferta será implantada
+                    </span>
                   </div>
                 </div>
 
                 {loadingDestinations ? (
                   <div className="flex flex-col items-center py-12 gap-3 opacity-20">
                     <Loader2 className="w-6 h-6 text-kinetic-orange animate-spin" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Acessando redes...</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">
+                      Acessando redes...
+                    </span>
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
-                    {destinations?.map((list) => (
-                      <div 
+                    {destinations?.map(list => (
+                      <div
                         key={list.id}
                         className={cn(
-                          "flex items-center space-x-3 p-4 rounded-2xl border-none transition-all cursor-pointer",
-                          selectedDestinations.includes(list.id) 
-                            ? "bg-kinetic-orange/10 shadow-skeuo-pressed" 
-                            : "bg-deep-void shadow-skeuo-pressed opacity-50 hover:opacity-80"
+                          'flex items-center space-x-3 p-4 rounded-2xl border-none transition-all cursor-pointer',
+                          selectedDestinations.includes(list.id)
+                            ? 'bg-kinetic-orange/10 shadow-skeuo-pressed'
+                            : 'bg-deep-void shadow-skeuo-pressed opacity-50 hover:opacity-80'
                         )}
                         onClick={() => handleToggleDestination(list.id)}
                       >
-                        <Checkbox 
+                        <Checkbox
                           checked={selectedDestinations.includes(list.id)}
                           className="border-white/10 data-[state=checked]:bg-kinetic-orange data-[state=checked]:border-none"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-black uppercase tracking-widest text-white/90">{list.name}</p>
+                          <p className="text-xs font-black uppercase tracking-widest text-white/90">
+                            {list.name}
+                          </p>
                           <div className="flex items-center gap-2 mt-1">
-                             <span className="text-[9px] text-white/20 font-bold uppercase">
-                                Integrado • Ativo
-                             </span>
+                            <span className="text-[9px] text-white/20 font-bold uppercase">
+                              Integrado • Ativo
+                            </span>
                           </div>
                         </div>
-                        <Badge variant="secondary" className="bg-white/5 border-none text-[8px] font-black uppercase text-white/40 h-5">
+                        <Badge
+                          variant="secondary"
+                          className="bg-white/5 border-none text-[8px] font-black uppercase text-white/40 h-5"
+                        >
                           Remoto
                         </Badge>
                       </div>
@@ -509,10 +582,11 @@ export default function EnvioRapidoPage() {
                 )}
               </TactileCard>
 
-              {/* 5. Resumo e Envio */}
               <TactileCard className="p-8 border-none ring-1 ring-kinetic-orange/20 bg-gradient-to-br from-anthracite-surface to-deep-void shadow-skeuo-elevated sticky top-24">
-                <h3 className="text-xs font-black uppercase tracking-widest text-kinetic-orange mb-6 font-headline">Sumário Operacional</h3>
-                
+                <h3 className="text-xs font-black uppercase tracking-widest text-kinetic-orange mb-6 font-headline">
+                  Sumário Operacional
+                </h3>
+
                 <div className="space-y-5 mb-8">
                   <div className="flex justify-between items-center text-[10px]">
                     <span className="text-white/30 font-bold uppercase">Cargas de Produto:</span>
@@ -524,28 +598,38 @@ export default function EnvioRapidoPage() {
                   </div>
                   <div className="h-px bg-white/5 w-full my-2" />
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-white/50 font-black uppercase tracking-widest">Total de Transmissões:</span>
-                    <span className="font-black text-kinetic-orange text-lg shadow-glow-orange/20">{processedProducts.length * selectedDestinations.length}</span>
+                    <span className="text-white/50 font-black uppercase tracking-widest">
+                      Total de Transmissões:
+                    </span>
+                    <span className="font-black text-kinetic-orange text-lg shadow-glow-orange/20">
+                      {processedProducts.length * selectedDestinations.length}
+                    </span>
                   </div>
                 </div>
 
-                <KineticButton 
+                <KineticButton
                   className="w-full h-14 font-black uppercase tracking-widest text-sm shadow-xl hover:scale-[1.02] transition-transform"
-                  disabled={isSending || processedProducts.length === 0 || selectedDestinations.length === 0}
+                  disabled={
+                    isSending || processedProducts.length === 0 || selectedDestinations.length === 0
+                  }
                   onClick={handleSend}
                 >
                   {isSending ? (
-                    <><Loader2 className="w-5 h-5 mr-3 animate-spin" /> Transmitindo...</>
+                    <>
+                      <Loader2 className="w-5 h-5 mr-3 animate-spin" /> Transmitindo...
+                    </>
                   ) : (
-                    <><SendHorizonal className="w-4 h-4 mr-3" /> Iniciar Broadcast</>
+                    <>
+                      <SendHorizonal className="w-4 h-4 mr-3" /> Iniciar Broadcast
+                    </>
                   )}
                 </KineticButton>
 
                 <div className="mt-6 flex items-start gap-3 p-4 bg-deep-void/50 rounded-xl border-none shadow-skeuo-pressed">
-                   <AlertCircle className="w-4 h-4 text-kinetic-orange flex-shrink-0 mt-0.5" />
-                   <p className="text-[9px] font-bold leading-relaxed uppercase text-white/30">
-                     ALERTA: A transmissão real depende das APIs externas. No modo atual, os registros são persistidos no Supabase.
-                   </p>
+                  <AlertCircle className="w-4 h-4 text-kinetic-orange flex-shrink-0 mt-0.5" />
+                  <p className="text-[9px] font-bold leading-relaxed uppercase text-white/30">
+                    ALERTA: A transmissão real depende das APIs externas. No modo atual, os registros são persistidos no Supabase.
+                  </p>
                 </div>
               </TactileCard>
             </div>
@@ -560,41 +644,60 @@ export default function EnvioRapidoPage() {
               </div>
               <div>
                 <h3 className="font-black uppercase tracking-widest text-sm">Disparo Imediato</h3>
-                <p className="text-[10px] uppercase text-white/40 font-bold">Teste a conexão enviando para si mesmo</p>
+                <p className="text-[10px] uppercase text-white/40 font-bold">
+                  Teste a conexão enviando para si mesmo
+                </p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-2 block">Canal de Disparo (Remetente)</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-2 block">
+                  Canal de Disparo (Remetente)
+                </label>
                 {loadingChannels ? (
-                  <div className="text-xs font-bold text-white/30 uppercase">Carregando canais...</div>
+                  <div className="text-xs font-bold text-white/30 uppercase">
+                    Carregando canais...
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {channels?.map(c => (
-                      <div 
-                        key={c.id} 
+                      <div
+                        key={c.id}
                         onClick={() => setTestChannelId(c.id)}
                         className={cn(
-                          "p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all",
-                          testChannelId === c.id ? "bg-blue-500/10 border-blue-500/30 ring-1 ring-blue-500" : "bg-deep-void border-white/5 hover:border-white/20"
+                          'p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all',
+                          testChannelId === c.id
+                            ? 'bg-blue-500/10 border-blue-500/30 ring-1 ring-blue-500'
+                            : 'bg-deep-void border-white/5 hover:border-white/20'
                         )}
                       >
-                        <div className={cn(
-                          "w-2 h-2 rounded-full shadow-[0_0_10px]",
-                          c.config?.status === 'connected' ? "bg-emerald-500 shadow-emerald-500/50" : "bg-white/20 shadow-white/10"
-                        )} />
+                        <div
+                          className={cn(
+                            'w-2 h-2 rounded-full shadow-[0_0_10px]',
+                            c.config?.status === 'connected'
+                              ? 'bg-emerald-500 shadow-emerald-500/50'
+                              : 'bg-white/20 shadow-white/10'
+                          )}
+                        />
                         <span className="text-xs font-bold">{c.name}</span>
-                        <Badge variant="outline" className={cn(
-                          "ml-auto border-none text-[8px] font-black uppercase tracking-widest h-5 px-2",
-                          c.type === 'telegram' ? "bg-blue-500/10 text-blue-400" : "bg-emerald-500/10 text-emerald-400"
-                        )}>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'ml-auto border-none text-[8px] font-black uppercase tracking-widest h-5 px-2',
+                            c.type === 'telegram'
+                              ? 'bg-blue-500/10 text-blue-400'
+                              : 'bg-emerald-500/10 text-emerald-400'
+                          )}
+                        >
                           {c.type === 'telegram' ? '🤖 Telegram' : '📱 WhatsApp'}
                         </Badge>
                       </div>
                     ))}
                     {(!channels || channels.length === 0) && (
-                      <div className="text-xs font-bold text-destructive uppercase">Nenhum canal conectado!</div>
+                      <div className="text-xs font-bold text-destructive uppercase">
+                        Nenhum canal conectado!
+                      </div>
                     )}
                   </div>
                 )}
@@ -602,12 +705,18 @@ export default function EnvioRapidoPage() {
 
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-2 block">
-                  {selectedChannelType === 'telegram' ? 'Chat ID do Destinatário' : 'Número do Destinatário'}
+                  {selectedChannelType === 'telegram'
+                    ? 'Chat ID do Destinatário'
+                    : 'Número do Destinatário'}
                 </label>
-                <Input 
+                <Input
                   value={testPhone}
                   onChange={e => setTestPhone(e.target.value)}
-                  placeholder={selectedChannelType === 'telegram' ? 'Ex: -1001234567890 ou 123456789' : 'Ex: +5547990000000'}
+                  placeholder={
+                    selectedChannelType === 'telegram'
+                      ? 'Ex: -1001234567890 ou 123456789'
+                      : 'Ex: +5547990000000'
+                  }
                   className="bg-deep-void border-none shadow-skeuo-pressed font-mono text-sm"
                 />
                 {selectedChannelType === 'telegram' && (
@@ -618,20 +727,26 @@ export default function EnvioRapidoPage() {
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-2 block">Mensagem Experimental</label>
-                <Textarea 
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-2 block">
+                  Mensagem Experimental
+                </label>
+                <Textarea
                   value={testMessage}
                   onChange={e => setTestMessage(e.target.value)}
                   className="bg-deep-void border-none shadow-skeuo-pressed min-h-[100px] text-sm"
                 />
               </div>
 
-              <KineticButton 
+              <KineticButton
                 className="w-full h-12 uppercase font-black tracking-widest text-xs mt-4 bg-kinetic-orange hover:bg-kinetic-orange/90 text-black shadow-glow-orange/30"
                 onClick={handleTestSend}
                 disabled={isTesting || !testChannelId || !testPhone || !testMessage}
               >
-                {isTesting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <SendHorizonal className="w-4 h-4 mr-2" />}
+                {isTesting ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <SendHorizonal className="w-4 h-4 mr-2" />
+                )}
                 {isTesting ? 'Transmitindo...' : 'Fogo (Enviar Teste)'}
               </KineticButton>
             </div>
