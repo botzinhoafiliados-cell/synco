@@ -1,5 +1,5 @@
 import { generateShopeeSignature } from './signature';
-import { ShopeeClientConfig, ShopeeGraphQLResponse, GenerateShortLinkResponse } from './types';
+import { ShopeeClientConfig, ShopeeGraphQLResponse, GenerateShortLinkResponse, ProductNode, ProductListResponse } from './types';
 
 /**
  * Cliente da Open API de Afiliados da Shopee via GraphQL.
@@ -27,7 +27,7 @@ export class ShopeeAffiliateClient {
     const payloadObj = {
       query: `
         mutation generateShortLink($originUrl: String!, $subIds: [String!]) {
-          generateShortLink(originUrl: $originUrl, subIds: $subIds) {
+          generateShortLink(input: { originUrl: $originUrl, subIds: $subIds }) {
             shortLink
           }
         }
@@ -78,7 +78,81 @@ export class ShopeeAffiliateClient {
       return json.data.generateShortLink.shortLink;
     } catch (error: any) {
       clearTimeout(timeoutId);
-      throw new Error(`Shopee GraphQL Error: ${error.message}`);
+      throw new Error(`Shopee GraphQL Error (generateShortLink): ${error.message}`);
+    }
+  }
+
+  /**
+   * Busca metadados de uma lista de produtos via GraphQL (productList).
+   * Este é o endpoint real suportado pela Shopee Affiliate API.
+   */
+  async getProductOfferV2(shopId: string, itemId: string): Promise<ProductNode[]> {
+    if (!this.appId || !this.secret) {
+      throw new Error('Shopee Open API credentials not configured');
+    }
+
+    if (!shopId || !itemId) return [];
+
+    const payloadObj = {
+      query: `
+        query productOfferV2($shopId: Int64, $itemId: Int64) {
+          productOfferV2(shopId: $shopId, itemId: $itemId) {
+            nodes {
+              productName
+              imageUrl
+              price
+              commission
+              commissionRate
+            }
+          }
+        }
+      `,
+      variables: {
+        shopId,
+        itemId
+      }
+    };
+
+    const payload = JSON.stringify(payloadObj);
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = generateShopeeSignature(this.appId, timestamp, payload, this.secret);
+    const authHeader = `SHA256 Credential=${this.appId}, Timestamp=${timestamp}, Signature=${signature}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: payload,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`[HTTP ${response.status}] ${response.statusText}`);
+      }
+
+      const json = await response.json() as ShopeeGraphQLResponse<{ productOfferV2: { nodes: ProductNode[] } }>;
+      
+      if (json.errors && json.errors.length > 0) {
+        throw new Error(json.errors[0].message);
+      }
+
+      // DIAGNÓSTICO AUDITÁVEL (CONFORME SOLICITADO)
+      console.error('--- [SHOPEE AUDIT] RAW PAYLOAD START ---');
+      console.error(JSON.stringify(json.data?.productOfferV2?.nodes || [], null, 2));
+      console.error('--- [SHOPEE AUDIT] RAW PAYLOAD END ---');
+
+      return json.data?.productOfferV2?.nodes || [];
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      throw new Error(`Shopee GraphQL Error (productOfferV2): ${error.message}`);
     }
   }
 }

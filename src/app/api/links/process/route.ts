@@ -58,6 +58,9 @@ export async function POST(request: Request) {
       return {
         ...conn,
         marketplace_name: conn.marketplaces?.name || '',
+        shopee_app_id: conn.shopee_app_id, // Garantir explicitamente
+        affiliate_id: conn.affiliate_id,
+        affiliate_code: conn.affiliate_code,
         shopee_app_secret: appSecret
       };
     }));

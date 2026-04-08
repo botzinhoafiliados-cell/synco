@@ -17,6 +17,8 @@ export interface ProcessedProduct {
   originalUrl: string;
   affiliateUrl: string;
   metadata_failed?: boolean;
+  commissionRate?: number;
+  commissionValue?: number;
 }
 
 // ─── Registry de Adapters ──────────────────────────────────────────────────
@@ -79,7 +81,9 @@ export async function processLinks(links: string[], userConnections: any[] = [])
           imageUrl: result.metadata?.imageUrl || '',
           originalUrl: link,
           affiliateUrl: result.affiliateUrl,
-          metadata_failed: !result.metadata
+          metadata_failed: result.metadata?.metadata_failed || !result.metadata,
+          commissionRate: result.metadata?.commissionRate,
+          commissionValue: result.metadata?.commissionValue
         });
       } catch (error) {
         console.error(`linkProcessor: Failed to process ${link}:`, error);

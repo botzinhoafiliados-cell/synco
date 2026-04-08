@@ -52,67 +52,119 @@ export class ShopeeAdapter extends MarketplaceAdapter {
 
   // ─── Metadados ──────────────────────────────────────────────────────────
 
-  async fetchMetadata(url: string): Promise<ProductMetadata | null> {
-    // Extração de IDs da URL da Shopee
-    // Formato típico: shopee.com.br/product-name-i.{shopId}.{itemId}
-    const match = url.match(/i\.(\d+)\.(\d+)/);
-
-    if (!match) {
-      console.warn(`ShopeeAdapter: Could not extract product IDs from URL: ${url}`);
-      return null;
-    }
-
-    const [, shopId, itemId] = match;
-
+  async fetchMetadata(url: string, connection?: UserMarketplaceConnection): Promise<ProductMetadata | null> {
+    // 1. Fallback Imediato: Extrair nome do slug da URL
+    let nameFallback = 'Produto Shopee';
     try {
-      // Tentar via API pública da Shopee (pode ser bloqueada sem credenciais)
-      const apiUrl = `https://shopee.com.br/api/v4/item/get?shopid=${shopId}&itemid=${itemId}`;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4500);
-
-      const res = await fetch(apiUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'Referer': 'https://shopee.com.br/'
-        },
-        signal: controller.signal
-      });
-      clearTimeout(timeout);
-
-      if (!res.ok) {
-        console.warn(`ShopeeAdapter: API returned ${res.status} for item ${itemId}`);
-        return null;
+      const path = new URL(url).pathname;
+      const parts = path.split('/');
+      const lastPart = parts[parts.length - 1];
+      if (lastPart.includes('-i.')) {
+        const rawSlug = lastPart.split('-i.')[0];
+        nameFallback = decodeURIComponent(rawSlug.replace(/-/g, ' '));
+        nameFallback = nameFallback.charAt(0).toUpperCase() + nameFallback.slice(1);
       }
-
-      const data = await res.json();
-      const item = data.data || data.item;
-
-      if (!item) return null;
-
-      const name = item.name || item.title || 'Produto Shopee';
-      const originalPrice = (item.price_before_discount || item.price || 0) / 100000;
-      const currentPrice = (item.price || item.price_min || 0) / 100000;
-      const discount = originalPrice > 0
-        ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-        : 0;
-      const imageUrl = item.image
-        ? `https://cf.shopee.com.br/file/${item.image}`
-        : '';
-
-      return {
-        name,
-        originalPrice,
-        currentPrice,
-        discountPercent: discount,
-        imageUrl,
-        marketplace: 'Shopee'
-      };
-
-    } catch (error) {
-      console.warn('ShopeeAdapter: Failed to fetch metadata:', error);
-      return null;
+    } catch (e) {
+      console.error('ShopeeAdapter: URL parse fallback failed:', e);
     }
+
+    // 2. Extração robusta de IDs (ShopID e ItemID)
+    let shopId = '';
+    let itemId = '';
+    const idMatch = url.match(/i\.(\d+)\.(\d+)/);
+    if (idMatch) {
+      shopId = idMatch[1];
+      itemId = idMatch[2];
+    }
+
+    // 3. Prioridade 1: Tentar via API v4 da Shopee (Scraper) - Mais estável para metadados visuais
+    if (shopId && itemId) {
+      try {
+        const apiUrl = `https://shopee.com.br/api/v4/item/get?shopid=${shopId}&itemid=${itemId}`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4500);
+
+        const res = await fetch(apiUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json',
+            'Referer': 'https://shopee.com.br/'
+          },
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+        if (res.ok) {
+          const data = await res.json();
+          const item = data.data || data.item;
+
+          if (item) {
+            const name = item.name || item.title || nameFallback;
+            const originalPrice = (item.price_before_discount || item.price || 0) / 100000;
+            const currentPrice = (item.price || item.price_min || 0) / 100000;
+            const discount = originalPrice > 0
+              ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+              : 0;
+            const imageUrl = item.image
+              ? `https://cf.shopee.com.br/file/${item.image}`
+              : '';
+
+            return {
+              name,
+              originalPrice,
+              currentPrice,
+              discountPercent: discount,
+              imageUrl,
+              marketplace: 'Shopee'
+            };
+          }
+        }
+      } catch (error) {
+        console.warn('ShopeeAdapter: Public scraper failed:', error);
+      }
+    }
+
+    // 4. Prioridade 2: Tentar via Shopee Affiliate Open API (GraphQL) - Para dados de comissão (se disponível)
+    if (connection?.is_active && connection.shopee_app_id && connection.shopee_app_secret) {
+      try {
+        const client = new ShopeeAffiliateClient({
+          appId: connection.shopee_app_id,
+          secret: connection.shopee_app_secret
+        });
+        
+        // const queryUrl = shopId && itemId ? `https://shopee.com.br/product/${shopId}/${itemId}` : url;
+        const nodes = await client.getProductOfferV2(shopId, itemId);
+
+        if (nodes && nodes.length > 0) {
+          const node = nodes[0];
+          const cPrice = node.price ? parseFloat(node.price) : 0;
+          
+          return {
+            name: node.productName || nameFallback,
+            originalPrice: cPrice, // GraphQL api de afiliado removeu suporte a originalPrice em productOfferV2
+            currentPrice: cPrice,
+            discountPercent: 0, // GraphQL api removeu suporte a discount direto
+            imageUrl: node.imageUrl,
+            marketplace: 'Shopee',
+            commissionRate: node.commissionRate ? parseFloat(String(node.commissionRate)) : undefined,
+            commissionValue: node.commission ? parseFloat(String(node.commission)) : undefined
+          };
+        }
+      } catch (err) {
+        console.warn('ShopeeAdapter: GraphQL metadata failed:', err);
+      }
+    }
+
+    // 4. Último Recurso: Fallback visual com nome do slug
+    return {
+      name: nameFallback,
+      originalPrice: 0,
+      currentPrice: 0,
+      discountPercent: 0,
+      imageUrl: '',
+      marketplace: 'Shopee',
+      metadata_failed: true
+    };
   }
 
   // ─── Link de Afiliado Oficial ──────────────────────────────────────────
