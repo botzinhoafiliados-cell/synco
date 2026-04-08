@@ -16,7 +16,7 @@ export const templateService = {
 
     // Se estiver vazio, garantir os templates padrão
     if (!data || data.length === 0) {
-      return this.ensureDefaultTemplates(userId);
+      return templateService.ensureDefaultTemplates(userId);
     }
 
     return data as Template[];
@@ -93,6 +93,7 @@ export const templateService = {
       .select();
 
     if (error) throw error;
+    
     return data as Template[];
   },
 

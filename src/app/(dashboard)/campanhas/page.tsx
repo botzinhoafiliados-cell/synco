@@ -1,171 +1,158 @@
+-- src/app/(dashboard)/campanhas/page.tsx
+
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCampaigns, useDeleteCampaign } from '@/hooks/use-campaigns';
+import { useCampaigns } from '@/hooks/use-campaigns';
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { 
-  MoreHorizontal, 
-  Trash, 
-  Calendar, 
-  CheckCircle2, 
-  Clock, 
   LayoutList,
   RefreshCw,
-  Search
+  Search,
+  Filter,
+  BarChart3,
+  Loader2
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { Button } from '@/components/ui/button';
+import { Campaign } from '@/types/campaign';
+import { CampaignCard } from '@/components/campaigns/CampaignCard';
+import { CampaignDetailsDrawer } from '@/components/campaigns/CampaignDetailsDrawer';
+import { cn } from '@/lib/utils';
 
 export default function CampanhasPage() {
   const { user } = useAuth();
-  const { data: campaigns, isLoading, isError, refetch } = useCampaigns(user?.id);
-  const deleteCampaign = useDeleteCampaign();
+  const { data: campaigns = [], isLoading, isError, refetch } = useCampaigns(user?.id);
+  
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta campanha?')) {
-      deleteCampaign.mutate({ id, userId: user?.id as string });
-    }
-  };
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter(c => {
+      const matchesSearch = c.name?.toLowerCase().includes(search.toLowerCase()) || 
+                           c.id.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [campaigns, search, statusFilter]);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20 capitalize gap-1"><CheckCircle2 size={12} /> Enviado</Badge>;
-      case 'scheduled':
-        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20 capitalize gap-1"><Clock size={12} /> Agendado</Badge>;
-      case 'failed':
-        return <Badge variant="destructive" className="capitalize">Falhou</Badge>;
-      default:
-        return <Badge variant="secondary" className="capitalize">{status}</Badge>;
-    }
+  const handleViewDetails = (campaign: Campaign) => {
+    setSelectedCampaign(campaign);
+    setIsDrawerOpen(true);
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-primary">
-            <LayoutList size={24} />
-            <h1 className="text-3xl font-bold tracking-tight">Campanhas</h1>
+    <div className="flex flex-col gap-8 p-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-xl bg-kinetic-orange shadow-glow-orange flex items-center justify-center">
+                <BarChart3 className="text-white w-5 h-5" />
+             </div>
+             <h1 className="text-2xl font-black uppercase tracking-tighter font-headline text-white">Campanhas</h1>
           </div>
-          <p className="text-muted-foreground max-w-2xl">
-            Histórico de envios e agendamentos de ofertas realizados pelo sistema.
-          </p>
+          <p className="text-xs font-bold text-white/20 uppercase tracking-widest px-1">Monitoramento operacional e histórico de disparos</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => refetch()} 
+            className="h-11 w-11 rounded-xl bg-deep-void border-white/5 hover:bg-white/5 transition-all shadow-skeuo-pressed"
+          >
+            <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+          </Button>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 bg-card p-4 rounded-xl border shadow-sm">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-          <Input 
-            placeholder="Buscar por nome da campanha..." 
-            className="pl-10 bg-muted/50 border-none"
-          />
+      {/* Filters Bar */}
+      <div className="flex flex-col gap-6 bg-white/5 p-6 rounded-2xl shadow-skeuo-flat border border-white/5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex-1 max-w-md relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-kinetic-orange transition-colors" />
+            <Input 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por nome ou ID..."
+              className="bg-deep-void border-none h-12 pl-12 rounded-xl text-sm font-bold shadow-skeuo-pressed placeholder:text-white/10 placeholder:uppercase placeholder:tracking-widest placeholder:text-[10px]"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+             <div className="flex items-center gap-2 p-1.5 bg-deep-void rounded-xl shadow-skeuo-pressed">
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                    statusFilter === 'all' ? "bg-kinetic-orange text-black" : "text-white/20 hover:text-white"
+                  )}
+                >
+                  Todas
+                </button>
+                <button
+                  onClick={() => setStatusFilter('sending')}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                    statusFilter === 'sending' ? "bg-blue-500 text-white" : "text-white/20 hover:text-white"
+                  )}
+                >
+                  Em Curso
+                </button>
+                <button
+                  onClick={() => setStatusFilter('completed')}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                    statusFilter === 'completed' ? "bg-emerald-500 text-white" : "text-white/20 hover:text-white"
+                  )}
+                >
+                  Concluídas
+                </button>
+             </div>
+          </div>
         </div>
-        <Button variant="outline" size="icon" onClick={() => refetch()} className="shrink-0">
-          <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
-        </Button>
       </div>
 
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead>Campanha</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Agendado/Enviado em</TableHead>
-              <TableHead>Produtos</TableHead>
-              <TableHead className="w-[80px] text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-[80px] rounded-full" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-[40px]" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto rounded-md" /></TableCell>
-                </TableRow>
-              ))
-            ) : isError ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center text-red-500">
-                  Erro ao carregar campanhas.
-                </TableCell>
-              </TableRow>
-            ) : campaigns?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                  Nenhuma campanha encontrada.
-                </TableCell>
-              </TableRow>
-            ) : (
-              campaigns?.map((campaign) => (
-                <TableRow key={campaign.id} className="group hover:bg-muted/20 transition-colors">
-                  <TableCell className="font-medium">
-                    {campaign.name || 'Sem nome'}
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(campaign.status)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar size={14} className="opacity-50" />
-                      {campaign.scheduled_at 
-                        ? format(new Date(campaign.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                        : campaign.created_at 
-                          ? format(new Date(campaign.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                          : '--'}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="font-mono bg-muted/30">
-                      {campaign.items?.length || 0}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem 
-                          onClick={() => handleDelete(campaign.id)}
-                          className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 cursor-pointer"
-                        >
-                          <Trash size={14} /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Grid Section */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-20">
+          <Loader2 className="w-8 h-8 animate-spin text-kinetic-orange" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Sincronizando banco de campanhas...</span>
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center py-20 text-red-500 gap-2">
+          <h3 className="text-sm font-black uppercase">Erro Crítico</h3>
+          <p className="text-[10px] font-bold uppercase opacity-50">Falha ao acessar o motor de dados.</p>
+        </div>
+      ) : filteredCampaigns.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredCampaigns.map(campaign => (
+            <CampaignCard 
+              key={campaign.id} 
+              campaign={campaign} 
+              onViewDetails={handleViewDetails}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-32 rounded-3xl bg-white/5 border border-dashed border-white/10 text-center">
+            <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center mb-6 shadow-skeuo-flat">
+               <Filter className="w-6 h-6 text-white/10" />
+            </div>
+            <h3 className="text-xs font-black uppercase tracking-widest text-white/40 mb-2">Nenhum registro encontrado</h3>
+            <p className="text-[10px] font-bold text-white/10 uppercase tracking-widest">Ajuste seus filtros ou inicie um novo envio rápido.</p>
+        </div>
+      )}
+
+      {/* Campaign Detail Drawer */}
+      <CampaignDetailsDrawer 
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        campaign={selectedCampaign}
+      />
     </div>
   );
 }
