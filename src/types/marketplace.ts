@@ -19,6 +19,9 @@ export interface UserMarketplaceConnection {
     affiliate_id?: string;
     affiliate_code?: string;
     affiliate_username?: string;
+    shopee_app_id?: string;
+    shopee_app_secret?: string; // used for transit
+    has_secret?: boolean; // stored UI flag ensuring config exists
     created_at: string;
     updated_at: string;
 }

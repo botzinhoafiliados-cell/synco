@@ -41,9 +41,13 @@ export const marketplaceService = {
    */
   async upsertConnection(connection: Partial<UserMarketplaceConnection> & { user_id: string; marketplace_id: string }): Promise<UserMarketplaceConnection> {
     const supabase = createClient();
+    
+    // Separa o secret do payload normal (ele é enviado paralelamente à rota de API encrypt)
+    const { shopee_app_secret, has_secret, ...safeConnection } = connection;
+
     const { data, error } = await supabase
       .from('user_marketplaces')
-      .upsert(connection)
+      .upsert(safeConnection, { onConflict: 'user_id, marketplace_id' })
       .select()
       .single();
     
@@ -51,6 +55,7 @@ export const marketplaceService = {
       console.error('Error upserting marketplace connection:', error);
       throw error;
     }
+
     return data;
   }
 };

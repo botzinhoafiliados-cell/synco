@@ -16,6 +16,9 @@ export interface ProcessedProduct {
   imageUrl: string;
   originalUrl: string;
   affiliateUrl: string;
+  metadata_failed?: boolean;
+  commissionRate?: number;
+  commissionValue?: number;
 }
 
 // ─── Registry de Adapters ──────────────────────────────────────────────────
@@ -48,10 +51,10 @@ function findAdapter(url: string): MarketplaceAdapter | null {
 }
 
 /**
- * Processa uma lista de links usando os adapters reais.
+ * Processa uma lista de links usando os adapters reais e injeta as conexões cacheadas.
  * Para marketplaces sem adapter implementado, retorna dados básicos com fallback.
  */
-export async function processLinks(links: string[]): Promise<ProcessedProduct[]> {
+export async function processLinks(links: string[], userConnections: any[] = []): Promise<ProcessedProduct[]> {
   const validLinks = links.filter(link => link.trim().length > 0);
   const results: ProcessedProduct[] = [];
 
@@ -63,7 +66,10 @@ export async function processLinks(links: string[]): Promise<ProcessedProduct[]>
     if (adapter) {
       // ─── Processamento Real via Adapter ────────────────────────────────
       try {
-        const result: AffiliateResult = await adapter.process(link);
+        const dbMarketplaceName = marketplace.toLowerCase().replace(' ', '');
+        const connection = userConnections.find(c => c.marketplace_name?.toLowerCase().replace(' ', '') === dbMarketplaceName);
+        
+        const result: AffiliateResult = await adapter.process(link, connection);
 
         results.push({
           id,
@@ -74,35 +80,40 @@ export async function processLinks(links: string[]): Promise<ProcessedProduct[]>
           discountPercent: result.metadata?.discountPercent || 0,
           imageUrl: result.metadata?.imageUrl || '',
           originalUrl: link,
-          affiliateUrl: result.affiliateUrl
+          affiliateUrl: result.affiliateUrl,
+          metadata_failed: result.metadata?.metadata_failed || !result.metadata,
+          commissionRate: result.metadata?.commissionRate,
+          commissionValue: result.metadata?.commissionValue
         });
       } catch (error) {
         console.error(`linkProcessor: Failed to process ${link}:`, error);
         // Fallback: retornar dados mínimos
         results.push({
           id,
-          name: `Produto ${marketplace} (erro no processamento)`,
+          name: `Produto ${marketplace} (Tracking Aplicado)`,
           marketplace,
           originalPrice: 0,
           currentPrice: 0,
           discountPercent: 0,
           imageUrl: '',
           originalUrl: link,
-          affiliateUrl: link
+          affiliateUrl: link,
+          metadata_failed: true
         });
       }
     } else {
       // ─── Sem Adapter — Retorna dados básicos ───────────────────────────
       results.push({
         id,
-        name: `Produto ${marketplace}`,
+        name: `Original ${marketplace}`,
         marketplace,
         originalPrice: 0,
         currentPrice: 0,
         discountPercent: 0,
         imageUrl: '',
         originalUrl: link,
-        affiliateUrl: link // Sem conversão
+        affiliateUrl: link,
+        metadata_failed: true
       });
     }
   }
