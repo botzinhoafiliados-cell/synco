@@ -3,7 +3,7 @@
 
 import { MarketplaceAdapter, ProductMetadata } from './BaseAdapter';
 import { UserMarketplaceConnection } from '@/types/marketplace';
-import { shopeeClient } from '@/lib/shopee-affiliate/client';
+import { ShopeeAffiliateClient } from '@/lib/shopee-affiliate/client';
 
 export class ShopeeAdapter extends MarketplaceAdapter {
   readonly name = 'Shopee';
@@ -124,9 +124,20 @@ export class ShopeeAdapter extends MarketplaceAdapter {
     if (connection?.is_active && connection.affiliate_code) subIds.push(connection.affiliate_code);
 
     try {
-      // Disparo via GraphQL (First-class route)
-      const officialShortLink = await shopeeClient.generateShortLink(cleanUrl, subIds);
-      return officialShortLink;
+      // Cria instância descartável/isolada apenas com a credencial do banco de dados deste Affiliate
+      if (connection?.is_active && connection.shopee_app_id && connection.shopee_app_secret) {
+        const tenantClient = new ShopeeAffiliateClient({
+          appId: connection.shopee_app_id,
+          secret: connection.shopee_app_secret
+        });
+        
+        return await tenantClient.generateShortLink(cleanUrl, subIds);
+      }
+      
+      // Fallback pra tentar Client System-Global se o usuário ainda usa tracking legado (mmp_pid) mas a agência Synco roda a API Global
+      const sysClient = new ShopeeAffiliateClient();
+      return await sysClient.generateShortLink(cleanUrl, subIds);
+
     } catch (error: any) {
       console.error(`ShopeeAdapter: GQL Fallback Triggered - ${error.message}`);
 

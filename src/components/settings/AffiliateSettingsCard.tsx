@@ -35,12 +35,16 @@ export function AffiliateSettingsCard({
 }: AffiliateSettingsCardProps) {
   const [affiliateId, setAffiliateId] = useState(connection?.affiliate_id || '');
   const [affiliateCode, setAffiliateCode] = useState(connection?.affiliate_code || '');
+  const [shopeeAppId, setShopeeAppId] = useState(connection?.shopee_app_id || '');
+  const [shopeeAppSecret, setShopeeAppSecret] = useState(''); // Always blank on load for security
   const [isActive, setIsActive] = useState(connection?.is_active ?? false);
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     setAffiliateId(connection?.affiliate_id || '');
     setAffiliateCode(connection?.affiliate_code || '');
+    setShopeeAppId(connection?.shopee_app_id || '');
+    setShopeeAppSecret('');
     setIsActive(connection?.is_active ?? false);
   }, [connection]);
 
@@ -48,6 +52,8 @@ export function AffiliateSettingsCard({
     const changed = 
       affiliateId !== (connection?.affiliate_id || '') ||
       affiliateCode !== (connection?.affiliate_code || '') ||
+      shopeeAppId !== (connection?.shopee_app_id || '') ||
+      shopeeAppSecret !== '' ||
       isActive !== (connection?.is_active ?? false);
     setHasChanges(changed);
   }, [affiliateId, affiliateCode, isActive, connection]);
@@ -61,6 +67,8 @@ export function AffiliateSettingsCard({
       marketplace_id: marketplace.id,
       affiliate_id: affiliateId,
       affiliate_code: affiliateCode,
+      shopee_app_id: shopeeAppId,
+      shopee_app_secret: shopeeAppSecret,
       is_active: isActive
     });
   };
@@ -95,7 +103,15 @@ export function AffiliateSettingsCard({
           >
             {isConfigured ? 'Parametrizado' : 'Pendente'}
           </Badge>
-          <div className="flex items-center gap-2">
+          {isShopee && connection?.shopee_app_secret_id && (
+            <Badge 
+              variant="outline" 
+              className="text-[9px] font-black uppercase tracking-widest border-none px-2 h-6 shadow-skeuo-pressed bg-kinetic-orange/10 text-kinetic-orange flex items-center gap-1 mt-1"
+            >
+              <ShieldCheck className="w-3 h-3" /> API Configurada
+            </Badge>
+          )}
+          <div className="flex items-center gap-2 mt-2">
             <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Ativo</span>
             <Switch 
               checked={isActive} 
@@ -133,16 +149,47 @@ export function AffiliateSettingsCard({
         </div>
 
         {isShopee && (
-          <div className="space-y-2 animate-in slide-in-from-top-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">
-              utm_source (Código Opcional)
-            </Label>
-            <Input 
-              value={affiliateCode}
-              onChange={(e) => setAffiliateCode(e.target.value)}
-              placeholder="Ex: synco_wa"
-              className="bg-deep-void border-none shadow-skeuo-pressed text-xs font-mono h-11 focus-visible:ring-1 focus-visible:ring-kinetic-orange/30 rounded-xl"
-            />
+          <div className="space-y-4 animate-in slide-in-from-top-2">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                utm_source (Código Opcional)
+              </Label>
+              <Input 
+                value={affiliateCode}
+                onChange={(e) => setAffiliateCode(e.target.value)}
+                placeholder="Ex: synco_wa"
+                className="bg-deep-void border-none shadow-skeuo-pressed text-xs font-mono h-11 focus-visible:ring-1 focus-visible:ring-kinetic-orange/30 rounded-xl"
+              />
+            </div>
+            
+            <div className="pt-4 border-t border-white/5 space-y-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black tracking-widest uppercase text-kinetic-orange">Acesso Open API (Avançado)</span>
+                <span className="text-[9px] text-white/30 uppercase mt-1 tracking-tighter">Obrigatório para geração de links curtos rastreáveis.</span>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Shopee App ID</Label>
+                <Input 
+                  value={shopeeAppId}
+                  onChange={(e) => setShopeeAppId(e.target.value)}
+                  placeholder="Ex: 123456789"
+                  className="bg-deep-void border-none shadow-skeuo-pressed text-xs font-mono h-11 focus-visible:ring-1 focus-visible:ring-kinetic-orange/30 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Shopee App Secret</Label>
+                <Input 
+                  type="password"
+                  value={shopeeAppSecret}
+                  onChange={(e) => setShopeeAppSecret(e.target.value)}
+                  placeholder={connection?.shopee_app_secret_id ? "••••••••••••••••••••••••" : "Cole seu App Secret (Chave Criptográfica)"}
+                  className="bg-deep-void border-none shadow-skeuo-pressed text-xs font-mono h-11 focus-visible:ring-1 focus-visible:ring-kinetic-orange/30 rounded-xl placeholder:tracking-[0.2em]"
+                />
+                <p className="text-[8px] text-white/20 tracking-tighter">
+                  Por segurança, o Secret não é exibido. Insira um novo para substituir o atual.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>

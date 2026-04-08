@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { processLinks } from '@/lib/linkProcessor';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export async function POST(request: Request) {
   try {
@@ -25,10 +26,29 @@ export async function POST(request: Request) {
       .select('*, marketplaces(name)')
       .eq('user_id', user.id);
 
-    const enrichedConnections = userConnections?.map(conn => ({
-      ...conn,
-      marketplace_name: conn.marketplaces?.name || ''
-    })) || [];
+    const supabaseAdmin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!, 
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const enrichedConnections = await Promise.all((userConnections || []).map(async (conn) => {
+      let appSecret = '';
+      if (conn.shopee_app_secret_id) {
+        const { data: secretData } = await supabaseAdmin
+          .schema('vault')
+          .from('decrypted_secrets')
+          .select('decrypted_secret')
+          .eq('id', conn.shopee_app_secret_id)
+          .single();
+        appSecret = secretData?.decrypted_secret || '';
+      }
+
+      return {
+        ...conn,
+        marketplace_name: conn.marketplaces?.name || '',
+        shopee_app_secret: appSecret
+      };
+    }));
 
     // Server-side processing with safely fetched user context
     const results = await processLinks(links, enrichedConnections);

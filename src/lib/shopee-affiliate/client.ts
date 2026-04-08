@@ -82,6 +82,3 @@ export class ShopeeAffiliateClient {
     }
   }
 }
-
-// Singleton exportado pro resto da app
-export const shopeeClient = new ShopeeAffiliateClient();

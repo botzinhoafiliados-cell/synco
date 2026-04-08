@@ -41,9 +41,13 @@ export const marketplaceService = {
    */
   async upsertConnection(connection: Partial<UserMarketplaceConnection> & { user_id: string; marketplace_id: string }): Promise<UserMarketplaceConnection> {
     const supabase = createClient();
+    
+    // Separa o secret do payload normal para não tentar salvar na tabela diretamente
+    const { shopee_app_secret, ...safeConnection } = connection;
+
     const { data, error } = await supabase
       .from('user_marketplaces')
-      .upsert(connection, { onConflict: 'user_id, marketplace_id' })
+      .upsert(safeConnection, { onConflict: 'user_id, marketplace_id' })
       .select()
       .single();
     
@@ -51,6 +55,20 @@ export const marketplaceService = {
       console.error('Error upserting marketplace connection:', error);
       throw error;
     }
+
+    // Se o usuário digitou um secret novo, rolar o upload seguro via RPC pro Vault
+    if (shopee_app_secret && safeConnection.marketplace_id) {
+      const { error: rpcError } = await supabase.rpc('set_shopee_secret', {
+        p_marketplace_id: safeConnection.marketplace_id,
+        p_secret: shopee_app_secret
+      });
+      
+      if (rpcError) {
+        console.error('Falha ao instanciar Secret no Vault:', rpcError);
+        throw new Error('Falha ao salvar senha criptográfica. O registro base foi salvo, mas a API falhará.');
+      }
+    }
+
     return data;
   }
 };
