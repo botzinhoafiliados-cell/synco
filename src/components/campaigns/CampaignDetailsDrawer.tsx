@@ -1,5 +1,3 @@
--- src/components/campaigns/CampaignDetailsDrawer.tsx
-
 import React, { useState } from 'react';
 import { Drawer } from 'vaul';
 import { Campaign, CampaignStatus } from '@/types/campaign';
@@ -16,7 +14,9 @@ import {
   Package, 
   ChevronLeft, 
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

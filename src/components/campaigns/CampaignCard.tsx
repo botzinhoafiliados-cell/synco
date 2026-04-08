@@ -1,5 +1,3 @@
--- src/components/campaigns/CampaignCard.tsx
-
 import React from 'react';
 import { Campaign } from '@/types/campaign';
 import { useCampaignStats } from '@/hooks/use-campaigns';
@@ -25,7 +23,7 @@ export function CampaignCard({ campaign, onViewDetails }: CampaignCardProps) {
   const { data: stats, isLoading } = useCampaignStats(campaign.id);
 
   const progress = stats?.total ? Math.round((stats.completed / stats.total) * 100) : 0;
-  const isPending = stats?.pending > 0 || stats?.processing > 0;
+  const isPending = (stats?.pending ?? 0) > 0 || (stats?.processing ?? 0) > 0;
 
   return (
     <TactileCard className="p-0 overflow-hidden border-none group animate-in fade-in duration-500">
@@ -49,9 +47,9 @@ export function CampaignCard({ campaign, onViewDetails }: CampaignCardProps) {
             )}>
               {isPending ? 'Sincronizando...' : 'Finalizada'}
             </Badge>
-            {stats?.failed > 0 && (
+            { (stats?.failed ?? 0) > 0 && (
               <Badge variant="outline" className="h-5 text-[8px] font-black uppercase tracking-widest bg-red-500/10 text-red-500 border-none">
-                {stats.failed} Erros
+                {stats?.failed} Erros
               </Badge>
             )}
           </div>
