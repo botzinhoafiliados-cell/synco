@@ -11,7 +11,7 @@ export const groupService = {
       .from('groups')
       .select(`
         *,
-        channels (name)
+        channels (name, config)
       `)
       .eq('user_id', userId)
       .order('name');
@@ -23,7 +23,8 @@ export const groupService = {
     
     return (data || []).map(g => ({
       ...g,
-      channel_name: (g as any).channels?.name || 'N/A'
+      channel_name: (g as any).channels?.name || 'N/A',
+      channel_config: (g as any).channels?.config || {}
     })) as Group[];
   },
 

@@ -142,6 +142,34 @@ export async function POST(request: Request) {
         break;
       }
 
+      case 'message.received':
+      case 'chat.message':
+      case 'chat.message_received': {
+        // ─── Automação de Entrada ──────────────────────────────────────────
+        // Disparar o processamento de forma assíncrona para responder rápido ao webhook
+        const protocol = request.url.startsWith('https') ? 'https' : 'http';
+        const host = request.headers.get('host');
+        const baseUrl = `${protocol}://${host}`;
+
+        const automPayload = {
+          userId: channel.user_id,
+          channelId: channel.id,
+          externalGroupId: body.data?.from || body.data?.chatId || body.from || '',
+          messageId: body.data?.id || body.id || '',
+          body: body.data?.body || body.data?.content || body.body || '',
+          isFromMe: body.data?.isFromMe ?? body.isFromMe ?? false,
+        };
+
+        // Fire and forget
+        fetch(`${baseUrl}/api/automations/process`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(automPayload),
+        }).catch(err => console.error('[WEBHOOK] Failed to trigger automation process:', err));
+
+        break;
+      }
+
       default:
         console.log(`Unhandled webhook event: ${eventType}`, body);
     }

@@ -8,9 +8,12 @@ import { GroupList } from '@/components/groups/GroupList';
 import { GroupDialog } from '@/components/groups/GroupDialog';
 import { Group } from '@/types/group';
 import { Button } from '@/components/ui/button';
-import { Plus, Users, Search, RefreshCw } from 'lucide-react';
+import { Plus, Users, Search, RefreshCw, Radio } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import LayoutContainer from '@/components/layout/LayoutContainer';
+import PageHeader from '@/components/shared/PageHeader';
+import { KineticButton } from '@/components/ui/KineticButton';
 
 export default function GruposPage() {
   const { user } = useAuth();
@@ -68,47 +71,49 @@ export default function GruposPage() {
   const isLoading = isLoadingGroups || isLoadingChannels;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-primary">
-            <Users size={24} />
-            <h1 className="text-3xl font-bold tracking-tight">Grupos</h1>
-          </div>
-          <p className="text-muted-foreground max-w-2xl">
-            Gerencie os grupos de destino das suas ofertas. Cada grupo deve estar vinculado a um canal (WhatsApp ou Telegram).
-          </p>
-        </div>
-        <Button onClick={handleCreate} className="gap-2 shadow-lg shadow-primary/20">
-          <Plus size={18} /> Novo Grupo
-        </Button>
-      </div>
+    <LayoutContainer type="operational">
+      <PageHeader 
+        title="Grupos"
+        description="Gestão de vetores de destino. Organize seus grupos por canal e categoria operacional."
+        icon={<Users size={24} />}
+        actions={
+          <KineticButton onClick={handleCreate} className="gap-2 px-6 h-12">
+            <Plus size={18} /> Novo Grupo
+          </KineticButton>
+        }
+      />
 
-      <div className="flex items-center gap-4 bg-card p-4 rounded-xl border shadow-sm">
+      <div className="flex items-center gap-4 bg-anthracite-surface p-4 rounded-2xl border-none shadow-skeuo-flat mb-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={18} />
           <Input 
             placeholder="Buscar por nome, ID ou descrição..." 
-            className="pl-10 bg-muted/50 border-none"
+            className="pl-10 bg-white/5 border-none shadow-skeuo-pressed"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="outline" size="icon" onClick={() => refetchGroups()} className="shrink-0">
-          <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => refetchGroups()} 
+          className="shrink-0 h-12 w-12 rounded-xl bg-white/5 border border-white/5"
+        >
+          <RefreshCw size={18} className={isLoading ? "animate-spin text-kinetic-orange" : "text-white/40"} />
         </Button>
       </div>
 
       {isLoading ? (
         <div className="space-y-4">
-          <Skeleton className="h-[60px] w-full rounded-xl" />
-          <Skeleton className="h-[60px] w-full rounded-xl" />
-          <Skeleton className="h-[60px] w-full rounded-xl" />
+          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5" />
+          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5" />
+          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5" />
         </div>
       ) : isErrorGroups ? (
-        <div className="p-8 text-center bg-red-50 rounded-2xl border border-red-100">
-          <p className="text-red-600 font-medium">Erro ao carregar grupos do Supabase.</p>
-          <Button variant="link" onClick={() => refetchGroups()} className="text-red-500">Tentar novamente</Button>
+        <div className="p-12 text-center bg-red-500/5 rounded-[40px] border border-red-500/10">
+          <p className="text-red-500 font-black uppercase tracking-widest text-sm italic">Erro de Sincronização</p>
+          <p className="text-white/20 text-xs mt-1">Não foi possível carregar os dados operacionais dos grupos.</p>
+          <Button variant="link" onClick={() => refetchGroups()} className="text-kinetic-orange mt-4 uppercase font-bold text-[10px] tracking-widest">Tentar novamente</Button>
         </div>
       ) : (
         <GroupList 
@@ -126,6 +131,6 @@ export default function GruposPage() {
         initialData={editingGroup}
         isSubmitting={createGroup.isPending || updateGroup.isPending}
       />
-    </div>
+    </LayoutContainer>
   );
 }

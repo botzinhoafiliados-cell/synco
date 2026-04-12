@@ -96,26 +96,36 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   key={item.path}
                   href={item.path}
                   className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative',
+                    'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group relative',
                     isActive
                       ? [
-                          // Active: skeuo-pressed with orange glow — matches referencia/stitch
-                          'bg-kinetic-orange/10 text-kinetic-orange',
-                          'shadow-[inset_2px_2px_5px_rgba(0,0,0,0.4),0_0_10px_rgba(255,107,0,0.15)]',
+                          // Active: skeuo-pressed with intense orange glow — matches user request
+                          'bg-kinetic-orange/15 text-kinetic-orange',
+                          'shadow-[inset_2px_2px_5px_rgba(0,0,0,0.6),0_0_20px_rgba(255,107,0,0.15)]',
                         ]
                       : item.highlight
                         ? 'text-white/40 hover:bg-white/5 hover:text-kinetic-orange'
                         : 'text-white/40 hover:bg-white/5 hover:text-white/80'
                   )}
                 >
+                  {/* Dominant Active Marker — Stitch Rule: explicit visual hierarchy */}
+                  {isActive && (
+                    <div className="absolute left-0 w-1 h-5 bg-kinetic-orange rounded-r-full shadow-glow-orange-intense animate-fade-in" />
+                  )}
+
                   <Icon
                     className={cn(
-                      'w-4 h-4 flex-shrink-0 transition-all duration-200',
-                      isActive && 'drop-shadow-[0_0_6px_rgba(255,107,0,0.7)]'
+                      'w-4 h-4 flex-shrink-0 transition-all duration-300',
+                      isActive ? 'text-kinetic-orange drop-shadow-[0_0_8px_rgba(255,107,0,0.9)] scale-110' : 'opacity-40'
                     )}
                   />
                   {!collapsed && (
-                    <span className="text-[11px] font-bold uppercase tracking-wider font-headline whitespace-nowrap">{item.label}</span>
+                    <span className={cn(
+                      "text-[10px] font-black uppercase tracking-[0.2em] font-headline whitespace-nowrap transition-all duration-300 truncate",
+                      isActive ? "text-kinetic-orange translate-x-1" : "text-inherit opacity-40 group-hover:opacity-80"
+                    )}>
+                      {item.label}
+                    </span>
                   )}
                   {/* Tooltip em modo compacto */}
                   {collapsed && (

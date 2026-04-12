@@ -7,9 +7,12 @@ import { ChannelList } from '@/components/channels/ChannelList';
 import { ChannelDialog } from '@/components/channels/ChannelDialog';
 import { Channel } from '@/types/group';
 import { Button } from '@/components/ui/button';
-import { Plus, List, Search, RefreshCw } from 'lucide-react';
+import { KineticButton } from '@/components/ui/KineticButton';
+import { Plus, List, Search, RefreshCw, Radio } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import LayoutContainer from '@/components/layout/LayoutContainer';
+import PageHeader from '@/components/shared/PageHeader';
 
 export default function CanaisPage() {
   const { user } = useAuth();
@@ -63,47 +66,44 @@ export default function CanaisPage() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-primary">
-            <List size={24} />
-            <h1 className="text-3xl font-bold tracking-tight">Canais</h1>
-          </div>
-          <p className="text-muted-foreground max-w-2xl">
-            Gerencie seus canais de transmissão. Os canais são usados para agrupar seus grupos e destinos de envio.
-          </p>
-        </div>
-        <Button onClick={handleCreate} className="gap-2 shadow-lg shadow-primary/20">
-          <Plus size={18} /> Novo Canal
-        </Button>
-      </div>
+    <LayoutContainer type="operational">
+      <PageHeader 
+        title="Canais" 
+        description="Gerencie seus canais de transmissão. Os canais agrupam seus grupos e destinos de envio."
+        icon={<Radio size={24} />}
+        actions={
+          <KineticButton onClick={handleCreate} className="gap-2 px-6 h-12">
+            <Plus size={18} /> Novo Canal
+          </KineticButton>
+        }
+      />
 
-      <div className="flex items-center gap-4 bg-card p-4 rounded-xl border shadow-sm">
+      <div className="flex items-center gap-4 bg-anthracite-surface p-4 rounded-2xl border-none shadow-skeuo-flat mb-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={18} />
           <Input 
             placeholder="Buscar canais..." 
-            className="pl-10 bg-muted/50 border-none"
+            className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="outline" size="icon" onClick={() => refetch()} className="shrink-0">
-          <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+        <Button variant="ghost" size="icon" onClick={() => refetch()} className="shrink-0 h-12 w-12 rounded-xl bg-white/5 border border-white/5">
+          <RefreshCw size={18} className={isLoading ? "animate-spin text-kinetic-orange" : "text-white/40"} />
         </Button>
       </div>
 
       {isLoading ? (
         <div className="space-y-4">
-          <Skeleton className="h-[60px] w-full rounded-xl" />
-          <Skeleton className="h-[60px] w-full rounded-xl" />
-          <Skeleton className="h-[60px] w-full rounded-xl" />
+          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5" />
+          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5" />
+          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5" />
         </div>
       ) : isError ? (
-        <div className="p-8 text-center bg-red-50 rounded-2xl border border-red-100">
-          <p className="text-red-600 font-medium">Erro ao carregar canais do Supabase.</p>
-          <Button variant="link" onClick={() => refetch()} className="text-red-500">Tentar novamente</Button>
+        <div className="p-12 text-center bg-red-500/5 rounded-[40px] border border-red-500/10">
+          <p className="text-red-500 font-black uppercase tracking-widest text-sm italic">Erro crítico de carregamento</p>
+          <p className="text-white/20 text-xs mt-1">Não foi possível sincronizar os canais com o Supabase.</p>
+          <Button variant="link" onClick={() => refetch()} className="text-kinetic-orange mt-4 uppercase font-bold text-[10px] tracking-widest">Tentar novamente</Button>
         </div>
       ) : (
         <ChannelList 
@@ -120,6 +120,6 @@ export default function CanaisPage() {
         initialData={editingChannel}
         isSubmitting={createChannel.isPending || updateChannel.isPending}
       />
-    </div>
+    </LayoutContainer>
   );
 }

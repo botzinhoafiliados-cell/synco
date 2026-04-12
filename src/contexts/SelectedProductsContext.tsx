@@ -40,8 +40,14 @@ const SelectedProductsContext = createContext<SelectedProductsContextValue | nul
 export function SelectedProductsProvider({ children }: { children: ReactNode }) {
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('synco_cart');
-      return saved ? JSON.parse(saved) : [];
+      try {
+        const saved = localStorage.getItem('synco_cart');
+        const parsed = saved ? JSON.parse(saved) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (err) {
+        console.error('[TRACE] SelectedProducts: failed to parse localStorage', err);
+        return [];
+      }
     }
     return [];
   });

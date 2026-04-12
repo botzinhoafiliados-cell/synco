@@ -46,5 +46,6 @@ export interface Group {
     updated_at?: string;
     // UI fields (joined)
     channel_name?: string;
+    channel_config?: WasenderConfig | any;
     sends_received?: number;
 }
