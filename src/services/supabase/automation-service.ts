@@ -1,0 +1,290 @@
+// src/services/supabase/automation-service.ts
+import { createClient } from '@/lib/supabase/client';
+import { AutomationSource, AutomationRoute } from '@/types/automation';
+
+const generateHash = (input: string) => {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16);
+};
+
+export const automationService = {
+  /**
+   * Lista todas as fontes de automação do usuário com suas rotas iniciais
+   */
+  async listSources(userId: string): Promise<AutomationSource[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('automation_sources')
+      .select(`
+        *,
+        automation_routes (
+          id,
+          target_type,
+          target_id,
+          template_config
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error listing automation sources:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  /**
+   * Cria uma nova fonte de monitoramento
+   */
+  async createSource(source: Partial<AutomationSource> & { user_id: string; source_type: 'group_monitor' | 'radar_offers' }): Promise<AutomationSource> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('automation_sources')
+      .insert(source)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * Cria um pipeline completo de automação (Fonte + Rota inicial)
+   */
+  async createPipeline(
+    userId: string, 
+    setup: {
+      name: string;
+      source_type: 'group_monitor' | 'radar_offers';
+      channel_id?: string;
+      external_group_id?: string;
+      target_type: 'group' | 'list';
+      target_id: string;
+    }
+  ): Promise<AutomationSource> {
+    const supabase = createClient();
+    
+    // 1. Criar a Fonte
+    const { data: source, error: sourceError } = await supabase
+      .from('automation_sources')
+      .insert({
+        user_id: userId,
+        name: setup.name,
+        source_type: setup.source_type,
+        channel_id: setup.channel_id,
+        external_group_id: setup.external_group_id,
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (sourceError) throw sourceError;
+
+    // 2. Criar a Rota Inicial (Destino)
+    const { error: routeError } = await supabase
+      .from('automation_routes')
+      .insert({
+        source_id: source.id,
+        target_type: setup.target_type,
+        target_id: setup.target_id,
+        is_active: true,
+        filters: {},
+        template_config: {}
+      });
+
+    if (routeError) throw routeError;
+
+    return source;
+  },
+
+  /**
+   * Busca fontes de automação ativas por canal e ID externo do grupo
+   */
+  async getSourceByExternalId(channelId: string, externalGroupId: string): Promise<AutomationSource | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('automation_sources')
+      .select('*')
+      .eq('channel_id', channelId)
+      .eq('external_group_id', externalGroupId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching automation source:', error);
+      return null;
+    }
+    return data;
+  },
+
+  /**
+   * Busca todas as rotas de destino de uma fonte específica
+   */
+  async getRoutesBySourceId(sourceId: string): Promise<AutomationRoute[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('automation_routes')
+      .select('*')
+      .eq('source_id', sourceId)
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('Error fetching automation routes:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  /**
+   * Lógica de Deduplicação Camada 1: Ingestão
+   */
+  async checkAndMarkDedupe(userId: string, normalizedUrl: string, sourceGroupId: string): Promise<boolean> {
+    const supabase = createClient();
+    
+    const hashKey = generateHash(`ingest:${userId}:${normalizedUrl}:${sourceGroupId}`);
+
+    const { error } = await supabase
+      .from('automation_dedupe')
+      .insert({ hash_key: hashKey });
+
+    if (error) {
+      if (error.code === '23505') return true; 
+      console.error('Error checking ingest dedupe:', error);
+      return false;
+    }
+
+    return false;
+  },
+
+  /**
+   * Busca uma fonte específica por ID
+   */
+  async getById(id: string): Promise<AutomationSource | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('automation_sources')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching automation source by id:', error);
+      return null;
+    }
+    return data;
+  },
+
+  /**
+   * Atualiza uma fonte (nome, status)
+   */
+  async updateSource(id: string, updates: Partial<AutomationSource>): Promise<void> {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('automation_sources')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Remove uma fonte e suas rotas
+   */
+  async deleteSource(id: string): Promise<void> {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('automation_sources')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Cria ou atualiza uma rota de destino
+   */
+  async upsertRoute(route: Partial<AutomationRoute> & { source_id: string; target_id: string }): Promise<AutomationRoute> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('automation_routes')
+      .upsert(route)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * Remove uma rota de destino
+   */
+  async deleteRoute(id: string): Promise<void> {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('automation_routes')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Busca logs de execução de uma automação
+   */
+  async getLogs(sourceId: string, limit: number = 50): Promise<any[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('automation_logs')
+      .select('*')
+      .eq('source_id', sourceId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Error fetching logs:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  /**
+   * Registra um evento de automação para observabilidade
+   */
+  async logEvent(log: {
+    source_id: string;
+    user_id: string;
+    status: 'captured' | 'filtered' | 'processed' | 'error';
+    event_type: string;
+    details: any;
+  }): Promise<void> {
+    const supabase = createClient();
+    await supabase.from('automation_logs').insert(log);
+  },
+
+  /**
+   * Lógica de Deduplicação Camada 2: Destino
+   */
+  async checkAndMarkDestinationDedupe(userId: string, normalizedUrl: string, targetId: string): Promise<boolean> {
+    const supabase = createClient();
+    
+    const hashKey = generateHash(`dest:${userId}:${normalizedUrl}:${targetId}`);
+
+    const { error } = await supabase
+      .from('automation_dedupe')
+      .insert({ hash_key: hashKey });
+
+    if (error) {
+      if (error.code === '23505') return true; 
+      console.error('Error checking destination dedupe:', error);
+      return false;
+    }
+
+    return false;
+  }
+};

@@ -1,202 +1,137 @@
-import type { Metadata } from 'next';
+'use client';
+
+import React from 'react';
 import {
   Send,
   PackageCheck,
   DollarSign,
   Star,
-  TrendingUp,
   Zap,
   ShieldCheck,
+  TrendingUp,
+  LayoutDashboard
 } from 'lucide-react';
-
-export const metadata: Metadata = {
-  title: 'Dashboard',
-  description: 'Visão geral do seu desempenho de afiliado.',
-};
+import LayoutContainer from '@/components/layout/LayoutContainer';
+import PageHeader from '@/components/shared/PageHeader';
+import { StatCard } from '@/components/ui/StatCard';
+import { TactileCard } from '@/components/ui/TactileCard';
+import { cn } from '@/lib/utils';
 
 // ─── KPI Config ──────────────────────────────────────────────────────────────
 
-interface KpiItem {
-  label: string;
-  value: string;
-  trend: string;
-  trendUp: boolean;
-  icon: React.ElementType;
-  accent: 'orange' | 'neutral' | 'red';
-}
-
-const KPI_ITEMS: KpiItem[] = [
+const KPI_ITEMS = [
   {
     label: 'Mensagens Enviadas',
-    value: '—',
-    trend: 'Aguardando dados',
-    trendUp: true,
-    icon: Send,
-    accent: 'orange',
+    value: '0',
+    description: 'Aguardando fluxo real',
+    trend: { value: '0%', positive: true },
+    icon: <Send size={16} />,
+    colorScheme: 'kinetic' as const,
   },
   {
     label: 'Produtos Ativos',
-    value: '—',
-    trend: 'Aguardando dados',
-    trendUp: true,
-    icon: PackageCheck,
-    accent: 'neutral',
+    value: '0',
+    description: 'Monitoramento contínuo',
+    icon: <PackageCheck size={16} />,
+    colorScheme: 'default' as const,
   },
   {
     label: 'Comissão do Mês',
-    value: '—',
-    trend: 'Aguardando dados',
-    trendUp: true,
-    icon: DollarSign,
-    accent: 'neutral',
+    value: 'R$ 0,00',
+    description: 'Ciclo atual de afiliados',
+    icon: <DollarSign size={16} />,
+    colorScheme: 'success' as const,
   },
   {
     label: 'Score Médio',
-    value: '—',
-    trend: 'Aguardando dados',
-    trendUp: false,
-    icon: Star,
-    accent: 'neutral',
+    value: '0.0',
+    description: 'Qualidade da curadoria',
+    icon: <Star size={16} />,
+    colorScheme: 'default' as const,
   },
 ];
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function KpiCard({ item }: { item: KpiItem }) {
-  const Icon = item.icon;
-  const isOrange = item.accent === 'orange';
-
-  return (
-    <div
-      className={[
-        // TactileCard base — No-Line, depth via shadow
-        'bg-anthracite-surface rounded-2xl p-6 flex flex-col gap-4',
-        'shadow-skeuo-elevated',
-        'group transition-all duration-300 hover:shadow-[8px_8px_20px_#08080a,-8px_-8px_20px_#222228]',
-      ].join(' ')}
-    >
-      {/* Header row */}
-      <div className="flex items-start justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
-          {item.label}
-        </span>
-        <div
-          className={[
-            'w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-300',
-            isOrange
-              ? 'bg-kinetic-orange/15 text-kinetic-orange group-hover:bg-kinetic-orange/25'
-              : 'bg-white/5 text-white/30 group-hover:text-white/50',
-          ].join(' ')}
-        >
-          <Icon className="w-4 h-4" />
-        </div>
-      </div>
-
-      {/* Value — skeuo-pressed cavity, Space Grotesk */}
-      <div className="bg-deep-void rounded-xl px-4 py-3 shadow-skeuo-pressed">
-        <div
-          className={[
-            'font-headline text-4xl font-bold tabular-nums',
-            isOrange
-              ? 'text-kinetic-orange drop-shadow-[0_0_12px_rgba(255,107,0,0.4)]'
-              : 'text-white/80',
-          ].join(' ')}
-        >
-          {item.value}
-        </div>
-        <div
-          className={[
-            'text-[10px] mt-1 flex items-center gap-1 font-medium',
-            isOrange ? 'text-kinetic-orange/60' : 'text-white/20',
-          ].join(' ')}
-        >
-          <TrendingUp className="w-3 h-3" />
-          {item.trend}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   return (
-    <div className="flex flex-col gap-8">
-
+    <LayoutContainer type="analytical">
       {/* Page header */}
-      <div>
-        <h1 className="font-headline text-2xl font-bold tracking-tight text-white">
-          Dashboard
-        </h1>
-        <p className="text-white/30 text-sm mt-1 font-inter">
-          Visão geral do seu desempenho
-        </p>
-      </div>
+      <PageHeader 
+        title="Dashboard" 
+        description="Visão geral do seu desempenho operacional e alcance de afiliados."
+        icon={<LayoutDashboard size={24} />}
+      />
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {KPI_ITEMS.map((item) => (
-          <KpiCard key={item.label} item={item} />
+          <StatCard 
+            key={item.label}
+            label={item.label}
+            value={item.value}
+            description={item.description}
+            trend={item.trend}
+            icon={item.icon}
+            colorScheme={item.colorScheme}
+          />
         ))}
       </div>
 
-      {/* Status panel — TactileCard flat variant */}
-      <div className="bg-anthracite-surface rounded-2xl p-6 shadow-skeuo-flat">
-
+      {/* Status panel */}
+      <TactileCard className="p-8 border-none bg-gradient-to-br from-anthracite-surface to-deep-void">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-kinetic-orange/15 flex items-center justify-center">
-            <Zap className="w-4 h-4 text-kinetic-orange" />
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-kinetic-orange/15 flex items-center justify-center border border-kinetic-orange/20">
+            <Zap className="w-5 h-5 text-kinetic-orange" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-white/80 font-headline tracking-tight">
-              Sistema Operacional
-            </p>
-            <p className="text-[10px] text-white/30 uppercase tracking-widest font-inter">
-              Status atual
+            <h3 className="text-sm font-black uppercase tracking-widest text-white/90 font-headline italic">
+              Status Operacional M1
+            </h3>
+            <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-medium">
+              Integridade do motor e conexões
             </p>
           </div>
           {/* Live indicator */}
-          <div className="ml-auto flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-kinetic-orange animate-pulse shadow-glow-orange" />
-            <span className="text-[10px] text-kinetic-orange font-bold uppercase tracking-widest">
+          <div className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-full border border-white/5 shadow-skeuo-pressed">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+            <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest">
               Online
             </span>
           </div>
         </div>
 
         {/* Gradient separator — No-Line */}
-        <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-4" />
+        <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8" />
 
         {/* Status items */}
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12">
           {[
             { label: 'Layout & Navegação', ok: true },
             { label: 'Sidebar, Topbar e design tokens', ok: true },
-            { label: 'Autenticação Supabase', ok: true },
-            { label: 'Conteúdo real das páginas (Fases 2–4)', ok: false },
+            { label: 'Autenticação Supabase & RLS', ok: true },
+            { label: 'Engine de Curadoria (AI)', ok: true },
+            { label: 'Processador de Links (Factual)', ok: true },
+            { label: 'Monitoramento em Tempo Real', ok: false },
           ].map(({ label, ok }) => (
-            <div key={label} className="flex items-center gap-2.5">
-              <ShieldCheck
-                className={[
-                  'w-3.5 h-3.5 flex-shrink-0',
-                  ok ? 'text-emerald-500' : 'text-white/20',
-                ].join(' ')}
-              />
-              <span
-                className={[
-                  'text-xs font-inter',
-                  ok ? 'text-white/60' : 'text-white/20',
-                ].join(' ')}
-              >
+            <div key={label} className="flex items-center gap-3 group">
+              <div className={cn(
+                "w-5 h-5 rounded-full flex items-center justify-center transition-all",
+                ok ? "bg-emerald-500/10 text-emerald-500 shadow-glow-orange/5" : "bg-white/5 text-white/10"
+              )}>
+                <ShieldCheck className="w-3 h-3" />
+              </div>
+              <span className={cn(
+                "text-[11px] font-bold uppercase tracking-wider transition-colors",
+                ok ? "text-white/60 group-hover:text-white" : "text-white/10"
+              )}>
                 {label}
               </span>
             </div>
           ))}
         </div>
-      </div>
-
-    </div>
+      </TactileCard>
+    </LayoutContainer>
   );
 }

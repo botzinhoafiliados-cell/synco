@@ -54,7 +54,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         >
           <Topbar onMobileMenuToggle={() => setMobileMenuOpen((o) => !o)} />
 
-          <main className="pt-20 px-8 pb-8 min-h-[calc(100vh-64px)]">
+          <main className="min-h-[calc(100vh-64px)]">
             {children}
           </main>
         </div>

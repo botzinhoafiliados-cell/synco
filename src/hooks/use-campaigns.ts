@@ -18,9 +18,9 @@ export function useCreateCampaign() {
   return useMutation({
     mutationFn: ({ userId, dto }: { userId: string; dto: CreateCampaignDTO }) => 
       campaignService.create(userId, dto),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      toast.success('Campanha criada com sucesso!');
+      toast.success(`Campanha ${data.id.slice(0, 8)} criada com sucesso!`);
     },
     onError: (error: any) => {
       console.error('Error creating campaign:', error);
@@ -49,8 +49,8 @@ export function useCampaignStats(campaignId?: string) {
     enabled: !!campaignId,
     refetchInterval: (query) => {
       const stats = query.state.data as any;
-      // Se ainda houver jobs pendentes ou em processamento, continua o refresh a cada 5s
-      return (stats?.pending > 0 || stats?.processing > 0) ? 5000 : false;
+      // Se ainda houver jobs pendentes ou em processamento, continua o refresh a cada 3s
+      return (stats?.pending > 0 || stats?.processing > 0) ? 3000 : false;
     }
   });
 }

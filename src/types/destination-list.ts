@@ -11,6 +11,11 @@ export interface DestinationList {
     icon?: string;
     status?: string;
     group_ids?: string[];
+    groups?: {
+        id: string;
+        name: string;
+        members_count: number;
+    }[];
 }
 
 export interface DestinationListGroup {

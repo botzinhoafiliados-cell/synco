@@ -14,16 +14,22 @@ import {
   Loader2,
   Link2,
   Edit2,
-  Info
+  Info,
+  Copy,
+  Check
 } from 'lucide-react';
-import { useDestinations } from '@/hooks/use-destinations';
+import { useGroups, useDestinations } from '@/hooks/use-destinations';
+import { SaveListDialog } from '@/components/destinations/SaveListDialog';
+import { DestinationList } from '@/types/destination-list';
+import { Group } from '@/types/group';
 import { useChannels } from '@/hooks/use-channels';
 import { useCreateCampaign } from '@/hooks/use-campaigns';
+import { BroadcastMonitor } from '@/components/campaigns/broadcast-monitor';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,7 +39,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { ProcessedProduct } from '@/lib/linkProcessor';
+import { ProductSnapshot } from '@/lib/linkProcessor';
+import LayoutContainer from '@/components/layout/LayoutContainer';
+import { Zap } from 'lucide-react';
 
 // Opções de Tonalidade da IA (Base44)
 const TONE_OPTIONS = [
@@ -46,18 +54,22 @@ const TONE_OPTIONS = [
 
 export default function EnvioRapidoPage() {
   const { user } = useAuth();
-  const { data: destinations, isLoading: loadingDestinations } = useDestinations(user?.id);
+  const { data: groups, isLoading: loadingDestinations } = useGroups(user?.id);
   const { mutate: createCampaign, isPending: isSending } = useCreateCampaign();
   const router = useRouter();
 
   const [linksInput, setLinksInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processedProducts, setProcessedProducts] = useState<ProcessedProduct[]>([]);
+  const [processedProducts, setProcessedProducts] = useState<ProductSnapshot[]>([]);
   const [tone, setTone] = useState('auto');
-  const [generatedTexts, setGeneratedTexts] = useState<Record<string, string>>({});
+  // generatedTexts removido: agora usamos o campo messageText dentro do snapshot
   const [selectedDestinations, setSelectedDestinations] = useState<string[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
+  const [isSaveListOpen, setIsSaveListOpen] = useState(false);
+
+  const { data: savedLists, isLoading: loadingLists } = useDestinations(user?.id);
 
   const { data: channels, isLoading: loadingChannels } = useChannels(user?.id);
   const [testChannelId, setTestChannelId] = useState('');
@@ -81,6 +93,22 @@ export default function EnvioRapidoPage() {
     () => linksInput.split('\n').filter(l => l.trim()).length,
     [linksInput]
   );
+
+  const groupedDestinations = useMemo(() => {
+    if (!groups) return {};
+    return groups.reduce((acc, group) => {
+      const channelId = group.channel_id;
+      if (!acc[channelId]) {
+        acc[channelId] = {
+          name: group.channel_name || 'Desconhecido',
+          phone: group.channel_config?.phoneNumber || null,
+          groups: []
+        };
+      }
+      acc[channelId].groups.push(group);
+      return acc;
+    }, {} as Record<string, { name: string; phone: string | null; groups: Group[] }>);
+  }, [groups]);
 
   const handleTestSend = async () => {
     if (!testChannelId || !testPhone || !testMessage) {
@@ -135,35 +163,6 @@ export default function EnvioRapidoPage() {
     }
   };
 
-  useEffect(() => {
-    const newTexts: Record<string, string> = { ...generatedTexts };
-    const toneLabel = TONE_OPTIONS.find(t => t.value === tone)?.label || 'Automático';
-
-    processedProducts.forEach(p => {
-      if (!newTexts[p.id]) {
-        if (p.metadata_failed) {
-          const productName = p.name || 'Produto Shopee';
-          newTexts[p.id] =
-            `🔥 *OFERTA DETECTADA* [Tom: ${toneLabel}]\n\n` +
-            `*${productName}*\n\n` +
-            `🚀 Compre aqui: ${p.affiliateUrl}\n\n` +
-            `#oferta #promoção #${p.marketplace.toLowerCase()}`;
-        } else {
-          newTexts[p.id] =
-            `🔥 *OFERTA DETECTADA* [Tom: ${toneLabel}]\n\n` +
-            `*${p.name}*\n\n` +
-            `💰 De: ~~R$ ${p.originalPrice.toFixed(2)}~~\n` +
-            `✅ Por: *R$ ${p.currentPrice.toFixed(2)}*\n` +
-            `📉 *${p.discountPercent}% de DESCONTO!*\n\n` +
-            `🚀 Compre aqui: ${p.affiliateUrl}\n\n` +
-            `#oferta #promoção #${p.marketplace.toLowerCase()}`;
-        }
-      }
-    });
-
-    setGeneratedTexts(newTexts);
-  }, [processedProducts, tone]);
-
   const handleProcess = async () => {
     if (!linksInput.trim()) {
       toast.error('Cole pelo menos um link para processar.');
@@ -177,7 +176,7 @@ export default function EnvioRapidoPage() {
       const res = await fetch('/api/links/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ links })
+        body: JSON.stringify({ links, tone })
       });
 
       if (!res.ok) {
@@ -201,9 +200,35 @@ export default function EnvioRapidoPage() {
     );
   };
 
+  const handleToggleList = (list: DestinationList) => {
+    const listGroupIds = list.group_ids || [];
+    if (listGroupIds.length === 0) return;
+
+    const areAllSelected = listGroupIds.every(id => selectedDestinations.includes(id));
+
+    if (areAllSelected) {
+      // Remover todos os grupos desta lista
+      setSelectedDestinations(prev => prev.filter(id => !listGroupIds.includes(id)));
+    } else {
+      // Adicionar apenas os que faltam
+      setSelectedDestinations(prev => [...new Set([...prev, ...listGroupIds])]);
+    }
+  };
+
+  const getListStats = (list: DestinationList) => {
+    const total = list.group_ids?.length || 0;
+    const selected = list.group_ids?.filter(id => selectedDestinations.includes(id)).length || 0;
+    return {
+      total,
+      selected,
+      isAll: total > 0 && total === selected,
+      isPartial: selected > 0 && selected < total
+    };
+  };
+
   const handleSend = () => {
     if (selectedDestinations.length === 0) {
-      toast.error('Selecione pelo menos uma lista de destino.');
+      toast.error('Selecione pelo menos um grupo de destino.');
       return;
     }
 
@@ -211,23 +236,24 @@ export default function EnvioRapidoPage() {
       name: `Envio Rápido - ${new Date().toLocaleDateString()}`,
       items: processedProducts.map(p => ({
         product_id: p.id,
-        product_name: p.name,
-        custom_text: generatedTexts[p.id] || '',
-        image_url: p.imageUrl,
-        affiliate_url: p.affiliateUrl
+        product_name: p.factual.title,
+        custom_text: p.copy.messageText || '',
+        image_url: p.factual.image || undefined,
+        affiliate_url: p.factual.finalLinkToSend
       })),
       destinations: selectedDestinations.map(id => ({
-        type: 'list' as const,
-        id
+        id,
+        type: 'group' as const,
       }))
     };
 
     createCampaign(
       { userId: user?.id as string, dto: campaignData },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           setIsSuccess(true);
-          toast.success('Campanha enviada com sucesso!');
+          setActiveCampaignId(data.id);
+          toast.success(`Broadcasting iniciado: ${data.id.slice(0, 8)}`);
         },
         onError: error => {
           console.error('Erro ao criar campanha:', error);
@@ -237,59 +263,28 @@ export default function EnvioRapidoPage() {
     );
   };
 
-  if (isSuccess) {
-    return (
-      <div className="max-w-2xl mx-auto flex flex-col items-center justify-center py-20 text-center animate-in zoom-in-95 duration-500">
-        <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mb-6 shadow-glow-orange/20">
-          <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-        </div>
-        <h2 className="text-3xl font-black uppercase tracking-tight mb-2 font-headline">
-          Transmissão Sincronizada!
-        </h2>
-        <p className="text-white/40 mb-8 max-w-sm mx-auto text-sm font-medium">
-          Seus produtos foram processados e os registros de envio foram salvos com sucesso.
-        </p>
-        <div className="flex gap-4">
-          <Button
-            variant="ghost"
-            className="font-black uppercase tracking-widest text-[10px] bg-white/5 rounded-xl px-8 h-12"
-            onClick={() => {
-              setIsSuccess(false);
-              setProcessedProducts([]);
-              setLinksInput('');
-              setSelectedDestinations([]);
-            }}
-          >
-            Novo Envio
-          </Button>
-          <KineticButton className="h-12 px-8" onClick={() => router.push('/campanhas')}>
-            Ver Relatórios
-          </KineticButton>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-20">
+    <LayoutContainer type="operational">
       <PageHeader
         title="Envio Rápido"
-        description="Core Operational Unit: Cole links, converta e dispare em segundos."
+        description="Core Operational Unit: Extração, Gestão e Broadcast Multiponto."
+        icon={<Zap size={24} />}
       />
 
       <Tabs defaultValue="broadcast" className="w-full">
-        <TabsList className="mb-8 bg-deep-void shadow-skeuo-pressed border p-1 rounded-xl">
+        <TabsList className="mb-6 bg-deep-void/50 shadow-skeuo-pressed p-1 rounded-2xl border-none h-12">
           <TabsTrigger
             value="broadcast"
-            className="text-xs font-black uppercase tracking-widest px-6 data-[state=active]:bg-kinetic-orange/10 data-[state=active]:text-kinetic-orange"
+            className="text-[10px] font-black uppercase tracking-[0.2em] px-8 h-full rounded-xl data-[state=active]:bg-kinetic-orange/10 data-[state=active]:text-kinetic-orange data-[state=active]:shadow-skeuo-pressed font-headline italic"
           >
-            🚀 Envio em Massa (Grupos)
+            🚀 Broadcast Operacional
           </TabsTrigger>
           <TabsTrigger
             value="test"
-            className="text-xs font-black uppercase tracking-widest px-6 data-[state=active]:bg-kinetic-orange/10 data-[state=active]:text-kinetic-orange"
+            className="text-[10px] font-black uppercase tracking-[0.2em] px-8 h-full rounded-xl data-[state=active]:bg-kinetic-orange/10 data-[state=active]:text-kinetic-orange data-[state=active]:shadow-skeuo-pressed font-headline italic"
           >
-            🔬 Teste de Conexão
+            🔬 Telemetria / Teste
           </TabsTrigger>
         </TabsList>
 
@@ -301,15 +296,15 @@ export default function EnvioRapidoPage() {
 
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shadow-skeuo-flat group-hover:shadow-glow-orange/20 transition-all">
+                    <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center shadow-skeuo-flat group-hover:shadow-glow-orange/20 transition-all border border-white/5">
                       <Link2 className="w-4 h-4 text-kinetic-orange" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-black text-sm uppercase tracking-widest font-headline">
-                        Entrada de Dados
+                      <span className="font-black text-[11px] uppercase tracking-[0.2em] font-headline italic text-white/90">
+                        Entrada de Links
                       </span>
-                      <span className="text-[10px] font-bold text-white/20 uppercase">
-                        Cole os links originais abaixo
+                      <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">
+                        Protocolo de Extração Factual
                       </span>
                     </div>
                   </div>
@@ -330,14 +325,14 @@ export default function EnvioRapidoPage() {
                   className="min-h-[140px] bg-deep-void shadow-skeuo-pressed border-none text-xs font-mono p-4 rounded-xl focus-visible:ring-1 focus-visible:ring-kinetic-orange/30 placeholder:text-white/10 resize-none leading-relaxed"
                 />
 
-                <div className="flex items-center justify-between mt-4">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-white/20 uppercase tracking-tighter">
+                <div className="flex items-center justify-between mt-5">
+                  <div className="flex items-center gap-2.5 text-[9px] font-bold text-white/10 uppercase tracking-widest italic">
                     <AlertCircle className="w-3 h-3" />
-                    Separe por uma linha para detecção automática
+                    Separação por linha para detecção múltipla
                   </div>
                   <KineticButton
                     onClick={handleProcess}
-                    className="h-10 px-6 font-black text-[10px] uppercase tracking-widest"
+                    className="h-11 px-8 font-black text-[10px] uppercase tracking-[0.2em] rounded-xl"
                     disabled={isProcessing || !linksInput.trim()}
                   >
                     {isProcessing ? (
@@ -346,7 +341,7 @@ export default function EnvioRapidoPage() {
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-3.5 h-3.5 mr-2" /> Processar Links
+                        <Sparkles className="w-3.5 h-3.5 mr-2" /> Iniciar Extração
                       </>
                     )}
                   </KineticButton>
@@ -355,15 +350,15 @@ export default function EnvioRapidoPage() {
 
               <TactileCard className="p-6 border-none">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shadow-skeuo-flat">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center shadow-skeuo-flat border border-purple-500/20">
                     <Sparkles className="w-4 h-4 text-purple-400" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-black text-sm uppercase tracking-widest font-headline">
-                      Tonalidade da IA
+                    <span className="font-black text-[11px] uppercase tracking-[0.2em] font-headline italic text-white/90">
+                      Vibe Engine (IA)
                     </span>
-                    <span className="text-[10px] font-bold text-white/20 uppercase">
-                      Ajuste o "Vibe" da conversão
+                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">
+                      Personalização de Tonalidade Operacional
                     </span>
                   </div>
                 </div>
@@ -374,21 +369,24 @@ export default function EnvioRapidoPage() {
                       key={opt.value}
                       onClick={() => setTone(opt.value)}
                       className={cn(
-                        'flex flex-col items-start p-3 rounded-2xl border-none transition-all w-[140px] text-left',
+                        'flex flex-col items-start p-3 rounded-2xl border-none transition-all w-[140px] text-left relative overflow-hidden group',
                         tone === opt.value
-                          ? 'bg-kinetic-orange/10 shadow-skeuo-pressed ring-1 ring-kinetic-orange/50'
+                          ? 'bg-kinetic-orange/10 shadow-skeuo-pressed ring-1 ring-kinetic-orange/40'
                           : 'bg-deep-void shadow-skeuo-pressed opacity-50 hover:opacity-80 active:scale-95'
                       )}
                     >
+                      {tone === opt.value && (
+                        <div className="absolute top-0 right-0 w-8 h-8 bg-kinetic-orange/20 blur-xl rounded-full" />
+                      )}
                       <span
                         className={cn(
-                          'text-xs font-black uppercase tracking-widest mb-1',
+                          'text-[10px] font-black uppercase tracking-[0.2em] mb-1 font-headline italic',
                           tone === opt.value ? 'text-kinetic-orange' : 'text-white/40'
                         )}
                       >
                         {opt.label.split(' ')[1]}
                       </span>
-                      <span className="text-[10px] font-bold text-white/20 leading-tight">
+                      <span className="text-[9px] font-bold text-white/20 leading-tight uppercase tracking-tighter">
                         {opt.desc}
                       </span>
                     </button>
@@ -405,30 +403,30 @@ export default function EnvioRapidoPage() {
                   {processedProducts.map(product => (
                     <TactileCard key={product.id} className="p-0 overflow-hidden border-none group">
                       <div className="flex flex-col md:flex-row">
-                        <div className="w-full md:w-32 bg-deep-void/50 p-4 flex flex-col items-center justify-center border-r border-white/5 bg-gradient-to-b from-transparent to-white/5">
-                          <div className="w-20 h-20 rounded-xl overflow-hidden shadow-skeuo-flat group-hover:shadow-glow-orange/20 transition-all duration-500 bg-deep-void relative">
-                            {product.metadata_failed || !product.imageUrl ? (
-                              <div className="flex flex-col items-center justify-center h-full bg-anthracite-surface/40 border border-white/5 rounded-xl">
-                                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mb-1.5 shadow-skeuo-pressed">
-                                  <Info className="w-3.5 h-3.5 text-white/20" />
+                        <div className="w-full md:w-36 bg-deep-void/50 p-4 flex flex-col items-center justify-center border-r border-white/5 bg-gradient-to-b from-transparent to-white/5 shrink-0">
+                          <div className="w-24 h-24 rounded-2xl overflow-hidden shadow-skeuo-flat group-hover:shadow-glow-orange/20 transition-all duration-500 bg-deep-void relative border border-white/5">
+                            {product.metadata.source === 'fallback' || !product.factual.image ? (
+                              <div className="flex flex-col items-center justify-center h-full bg-anthracite-surface/40 rounded-xl">
+                                <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center mb-1.5 shadow-skeuo-pressed">
+                                  <Info className="w-4 h-4 text-white/10" />
                                 </div>
-                                <span className="text-[8px] font-black uppercase tracking-widest text-white/30 text-center px-1">
-                                  Img Indisponível
+                                <span className="text-[7.5px] font-black uppercase tracking-widest text-white/20 text-center px-2 leading-tight">
+                                  SINAL DE IMAGEM AUSENTE
                                 </span>
                               </div>
                             ) : (
-                              <img
-                                src={product.imageUrl}
-                                alt=""
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                              />
+                                <img
+                                  src={product.factual.image}
+                                  alt=""
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                />
                             )}
-                            <div className="absolute top-1 right-1">
+                            <div className="absolute top-1.5 right-1.5">
                               <Badge
                                 variant="outline"
-                                className="bg-black/60 backdrop-blur-md border-none text-[7px] font-black uppercase tracking-tighter h-4 px-1.5"
+                                className="bg-black/80 backdrop-blur-md border border-white/10 text-[7px] font-black uppercase tracking-tighter h-4 px-1.5 rounded-md"
                               >
-                                {product.marketplace}
+                                {product.factual.marketplace}
                               </Badge>
                             </div>
                           </div>
@@ -437,65 +435,91 @@ export default function EnvioRapidoPage() {
                         <div className="flex-1 p-5 lg:p-6 space-y-4">
                           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                             <div className="flex-1 space-y-2">
-                              <h4 className="text-[13px] font-black uppercase tracking-wider text-white/90 line-clamp-1 font-headline group-hover:text-kinetic-orange transition-colors">
-                                {product.name}
-                              </h4>
+                                <div className="flex items-center gap-2 group/title">
+                                  <h4 className="text-[14px] font-black uppercase tracking-tight text-white/90 line-clamp-1 font-headline italic group-hover:text-kinetic-orange transition-colors">
+                                    {product.factual.title}
+                                  </h4>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-3 rounded-lg bg-white/5 hover:bg-kinetic-orange/20 hover:text-kinetic-orange flex items-center gap-2 transition-all opacity-0 group-hover/title:opacity-100 border border-white/5"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(product.factual.finalLinkToSend);
+                                      toast.success('Link original copiado para a área de transferência');
+                                    }}
+                                  >
+                                    <Copy className="w-3 h-3 text-kinetic-orange" />
+                                    <span className="text-[8px] font-black uppercase tracking-widest">COPIAR LINK</span>
+                                  </Button>
+                                </div>
 
                               <div className="flex flex-wrap items-center gap-3">
-                                {!product.metadata_failed && product.currentPrice > 0 ? (
+                                {product.metadata.source !== 'fallback' && product.factual.price && product.factual.price > 0 ? (
                                   <Popover>
                                     <PopoverTrigger asChild>
-                                      <div className="flex items-center gap-2 cursor-pointer group/price hover:bg-white/5 px-2 -ml-2 py-0.5 rounded-md transition-all">
-                                        <span className="text-[13px] font-black text-kinetic-orange">
-                                          R$ {product.currentPrice.toFixed(2)}
-                                        </span>
-                                        {product.hasPixDiscount && (
-                                          <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-1.5 py-0.5 rounded uppercase tracking-tighter">
-                                            Pix
+                                      <div className="flex flex-col items-start gap-1 cursor-pointer group/price hover:bg-white/5 px-2 -ml-2 py-1 rounded-xl transition-all">
+                                        <div className="flex items-center gap-2">
+                                          {product.factual.originalPrice && product.factual.originalPrice > product.factual.currentPriceFactual! && (
+                                            <span className="text-[10px] line-through text-white/20 font-bold decoration-kinetic-orange/40">
+                                              {product.factual.originalPriceFormatted}
+                                            </span>
+                                          )}
+                                          <span className="text-[14px] font-black text-kinetic-orange shadow-glow-orange/10">
+                                            {product.factual.priceFormatted || 'Preço Indisponível'}
                                           </span>
+                                          <Info className="w-3 h-3 text-white/20 group-hover/price:text-kinetic-orange transition-colors" />
+                                        </div>
+                                        
+                                        {product.factual.estimatedPixPrice && (
+                                          <div className="flex items-center gap-1.5 bg-kinetic-orange/5 px-1.5 py-0.5 rounded-md border border-kinetic-orange/10">
+                                            <span className="text-[9px] font-black text-kinetic-orange/80 uppercase">
+                                              {product.factual.estimatedPixPriceFormatted}
+                                            </span>
+                                            <span className="text-[8px] font-bold text-white/40 uppercase tracking-tighter">
+                                              No Pix
+                                            </span>
+                                          </div>
                                         )}
-                                        {product.originalPrice > product.currentPrice && !product.hasPixDiscount && (
-                                          <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                            -{product.discountPercent}%
-                                          </span>
-                                        )}
-                                        <Info className="w-3 h-3 text-white/20 group-hover/price:text-kinetic-orange transition-colors" />
                                       </div>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-60 bg-deep-void border-none shadow-skeuo-elevated p-4 animate-in fade-in zoom-in duration-200">
-                                      <div className="space-y-3">
+                                    <PopoverContent className="w-64 bg-deep-void border-none shadow-skeuo-elevated p-5 animate-in fade-in zoom-in duration-200 rounded-2xl ring-1 ring-white/5">
+                                      <div className="space-y-4">
                                         <h5 className="text-[10px] font-black uppercase tracking-widest text-white/30 border-b border-white/5 pb-2">
-                                          Detalhamento de Preço
+                                          Auditoria Factual Pro
                                         </h5>
                                         
-                                        <div className="space-y-2 text-[11px] font-bold">
-                                            <div className="flex justify-between items-center text-white/40">
-                                              <span>PREÇO ORIGINAL</span>
-                                              <span className="line-through decoration-white/10">R$ {product.originalPrice.toFixed(2)}</span>
+                                        <div className="space-y-2.5 text-[11px] font-bold text-white/40">
+                                            <div className="flex justify-between items-center bg-white/5 p-2 rounded-lg">
+                                              <span className="text-[9px] uppercase">Fonte do Preço</span>
+                                              <Badge variant="outline" className="h-4 text-[8px] border-none bg-deep-void uppercase">{product.factual.currentPriceSource || 'N/A'}</Badge>
                                             </div>
-
-                                            {product.originalPrice > (product.promoPrice || product.currentPrice) && (
-                                              <div className="flex justify-between items-center text-emerald-400">
-                                                <span>DESCONTO PRODUTO</span>
-                                                <span>-R$ {(product.originalPrice - (product.promoPrice || product.currentPrice)).toFixed(2)}</span>
+                                            <div className="flex justify-between items-center bg-white/5 p-2 rounded-lg">
+                                              <span className="text-[9px] uppercase">Fonte Comissão</span>
+                                              <Badge variant="outline" className="h-4 text-[8px] border-none bg-deep-void uppercase">{product.factual.commissionSource || 'N/A'}</Badge>
+                                            </div>
+                                            
+                                            <div className="h-px bg-white/5 my-1" />
+                                            
+                                            <div className="flex justify-between items-baseline pt-1">
+                                              <span className="text-[9px] uppercase text-white/20 font-black">Preço API</span>
+                                              <span className="text-white/80">{product.factual.priceFormatted}</span>
+                                            </div>
+                                            
+                                            {product.factual.estimatedPixPrice && (
+                                              <div className="flex justify-between items-baseline">
+                                                <span className="text-[9px] uppercase text-kinetic-orange/40 font-black">No Pix</span>
+                                                <span className="text-kinetic-orange/80">{product.factual.estimatedPixPriceFormatted}</span>
                                               </div>
                                             )}
 
-                                            {product.hasPixDiscount && (
-                                              <div className="flex justify-between items-center text-sky-400">
-                                                <span>DESCONTO PIX</span>
-                                                <span>-R$ {((product.promoPrice || product.currentPrice) - product.currentPrice).toFixed(2)}</span>
-                                              </div>
-                                            )}
-
-                                            <div className="flex justify-between items-center text-kinetic-orange pt-2 border-t border-white/5 text-[12px]">
-                                              <span>VALOR FINAL</span>
-                                              <span className="font-black">R$ {product.currentPrice.toFixed(2)}</span>
+                                            <div className="flex justify-between items-baseline pt-2 border-t border-white/5 text-kinetic-orange text-[12px] font-black">
+                                              <span>COMISSÃO FINAL</span>
+                                              <span>{product.factual.commissionValueFormatted || 'R$ 0,00'}</span>
                                             </div>
                                         </div>
                                         
-                                        <p className="text-[9px] text-white/20 font-bold uppercase tracking-tight text-center pt-1">
-                                          {product.hasPixDiscount ? '💡 Economia máxima via Pix aplicada' : '💡 Preço promocional ativo'}
+                                        <p className="text-[8px] text-white/10 font-black uppercase tracking-tight text-center pt-2 italic">
+                                          Telemetry ID: {product.factual.itemId} • {new Date(product.factual.fetchedAt).toLocaleString('pt-BR')}
                                         </p>
                                       </div>
                                     </PopoverContent>
@@ -513,12 +537,16 @@ export default function EnvioRapidoPage() {
                                   Tracking Oficial Ativo
                                 </Badge>
 
-                                {product.commissionRate != null && product.commissionRate > 0 && (
+                                {product.factual.commissionValueFactual && product.factual.commissionValueFactual > 0 && (
                                   <Badge
                                     variant="outline"
                                     className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 h-5 text-[8px] font-black uppercase tracking-widest"
                                   >
-                                    💰 {(product.commissionRate * 100).toFixed(1)}% comissão
+                                    💰 {product.factual.commissionValueFormatted} 
+                                    {product.factual.commissionRatePercent && (
+                                      <span className="ml-1 opacity-60 font-bold">({product.factual.commissionRatePercent})</span>
+                                    )}
+                                    <span className="ml-1">comissão</span>
                                   </Badge>
                                 )}
                               </div>
@@ -536,10 +564,15 @@ export default function EnvioRapidoPage() {
 
                           <div className="relative">
                             <Textarea
-                              value={generatedTexts[product.id] || ''}
+                              value={product.copy.messageText || ''}
                               disabled={editingId !== product.id}
                               onChange={e =>
-                                setGeneratedTexts(prev => ({ ...prev, [product.id]: e.target.value }))
+                                setProcessedProducts(prev => 
+                                  prev.map(p => p.id === product.id 
+                                    ? { ...p, copy: { ...p.copy, messageText: e.target.value } } 
+                                    : p
+                                  )
+                                )
                               }
                               className={cn(
                                 'min-h-[120px] text-[11px] font-mono leading-relaxed p-4 rounded-xl border-none transition-all resize-none',
@@ -569,21 +602,34 @@ export default function EnvioRapidoPage() {
 
             <div className="lg:col-span-5 space-y-8 flex flex-col">
               <TactileCard className="p-6 border-none">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shadow-skeuo-flat">
-                    <LayoutList className="w-4 h-4 text-blue-400" />
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shadow-skeuo-flat border border-blue-500/20">
+                      <LayoutList className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-black text-[11px] uppercase tracking-[0.2em] font-headline italic text-white/90">
+                        Estrutura de Destino
+                      </span>
+                      <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">
+                        Vetores de Propagação Multiponto
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="font-black text-sm uppercase tracking-widest font-headline">
-                      Canais de Destino
-                    </span>
-                    <span className="text-[10px] font-bold text-white/20 uppercase">
-                      Onde a oferta será implantada
-                    </span>
-                  </div>
+
+                  {selectedDestinations.length > 1 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setIsSaveListOpen(true)}
+                      className="h-8 px-3 bg-kinetic-orange/10 hover:bg-kinetic-orange/20 text-kinetic-orange border-none text-[9px] font-black uppercase tracking-widest gap-2 rounded-lg transition-all"
+                    >
+                      <Sparkles className="w-3 h-3" /> Salvar Coleção
+                    </Button>
+                  )}
                 </div>
 
-                {loadingDestinations ? (
+                {loadingDestinations || loadingLists ? (
                   <div className="flex flex-col items-center py-12 gap-3 opacity-20">
                     <Loader2 className="w-6 h-6 text-kinetic-orange animate-spin" />
                     <span className="text-[10px] font-black uppercase tracking-widest">
@@ -591,94 +637,173 @@ export default function EnvioRapidoPage() {
                     </span>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
-                    {destinations?.map(list => (
-                      <div
-                        key={list.id}
-                        className={cn(
-                          'flex items-center space-x-3 p-4 rounded-2xl border-none transition-all cursor-pointer',
-                          selectedDestinations.includes(list.id)
-                            ? 'bg-kinetic-orange/10 shadow-skeuo-pressed'
-                            : 'bg-deep-void shadow-skeuo-pressed opacity-50 hover:opacity-80'
-                        )}
-                        onClick={() => handleToggleDestination(list.id)}
-                      >
-                        <Checkbox
-                          checked={selectedDestinations.includes(list.id)}
-                          className="border-white/10 data-[state=checked]:bg-kinetic-orange data-[state=checked]:border-none"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-black uppercase tracking-widest text-white/90">
-                            {list.name}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[9px] text-white/20 font-bold uppercase">
-                              Integrado • Ativo
-                            </span>
-                          </div>
+                  <div className="space-y-6 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
+                    {/* Listas Salvas */}
+                    {savedLists && savedLists.length > 0 && (
+                      <div className="space-y-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/40 px-1">
+                          Suas Coleções
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {savedLists.map(list => {
+                            const { total, selected, isAll, isPartial } = getListStats(list);
+                            return (
+                              <div
+                                key={list.id}
+                                onClick={() => handleToggleList(list)}
+                                className={cn(
+                                  "px-3 py-2 rounded-xl border-none transition-all cursor-pointer flex items-center gap-3",
+                                  isAll 
+                                    ? "bg-kinetic-orange shadow-glow-orange-intense text-black" 
+                                    : isPartial 
+                                    ? "bg-kinetic-orange/30 shadow-glow-orange text-white" 
+                                    : "bg-deep-void shadow-skeuo-pressed text-white/40 hover:text-white/60"
+                                )}
+                              >
+                                <LayoutList className={cn("w-3 h-3", isAll ? "text-black" : "text-kinetic-orange")} />
+                                <div className="flex flex-col">
+                                  <span className="text-[9px] font-black uppercase tracking-tight truncate max-w-[120px]">
+                                    {list.name}
+                                  </span>
+                                  <span className={cn("text-[7px] font-bold uppercase", isAll ? "text-black/60" : "text-white/20")}>
+                                    {selected}/{total} GRUPOS
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <Badge
-                          variant="secondary"
-                          className="bg-white/5 border-none text-[8px] font-black uppercase text-white/40 h-5"
-                        >
-                          Remoto
-                        </Badge>
+                        <div className="h-px bg-white/5 w-full my-4" />
+                      </div>
+                    )}
+                    {Object.entries(groupedDestinations).map(([channelId, channelData]) => (
+                      <div key={channelId} className="space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-kinetic-orange shadow-glow-orange" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                             {channelData.name} {channelData.phone ? `• ${channelData.phone}` : '• Sessão Ativa'}
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {channelData.groups.map(group => (
+                            <div
+                              key={group.id}
+                              className={cn(
+                                'flex items-center space-x-3 p-4 rounded-2xl border-none transition-all cursor-pointer',
+                                selectedDestinations.includes(group.id)
+                                  ? 'bg-kinetic-orange/10 shadow-skeuo-pressed'
+                                  : 'bg-deep-void shadow-skeuo-pressed opacity-50 hover:opacity-80'
+                              )}
+                              onClick={() => handleToggleDestination(group.id)}
+                            >
+                              <Checkbox
+                                checked={selectedDestinations.includes(group.id)}
+                                onCheckedChange={() => handleToggleDestination(group.id)}
+                                className="border-white/10 data-[state=checked]:bg-kinetic-orange data-[state=checked]:border-none"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-black uppercase tracking-widest text-white/90 truncate">
+                                  {group.name}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[9px] text-white/20 font-bold uppercase">
+                                    {(group as any).members_count} Membros • Ativo
+                                  </span>
+                                </div>
+                              </div>
+                              <Badge
+                                variant="secondary"
+                                className="bg-white/5 border-none text-[8px] font-black uppercase text-white/40 h-5"
+                              >
+                                GRUPO
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
+                    
+                    {groups?.length === 0 && (
+                      <div className="py-12 flex flex-col items-center justify-center text-center opacity-30">
+                        <AlertCircle className="w-8 h-8 mb-3" />
+                        <p className="text-[10px] font-black uppercase tracking-widest">Nenhum grupo encontrado</p>
+                        <p className="text-[9px] font-bold uppercase mt-1">Sincronize seus canais primeiro</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </TactileCard>
 
-              <TactileCard className="p-8 border-none ring-1 ring-kinetic-orange/20 bg-gradient-to-br from-anthracite-surface to-deep-void shadow-skeuo-elevated sticky top-24">
-                <h3 className="text-xs font-black uppercase tracking-widest text-kinetic-orange mb-6 font-headline">
-                  Sumário Operacional
-                </h3>
 
-                <div className="space-y-5 mb-8">
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-white/30 font-bold uppercase">Cargas de Produto:</span>
-                    <span className="font-black text-white/80">{processedProducts.length}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-white/30 font-bold uppercase">Vetores de Destino:</span>
-                    <span className="font-black text-white/80">{selectedDestinations.length}</span>
-                  </div>
-                  <div className="h-px bg-white/5 w-full my-2" />
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-white/50 font-black uppercase tracking-widest">
-                      Total de Transmissões:
-                    </span>
-                    <span className="font-black text-kinetic-orange text-lg shadow-glow-orange/20">
-                      {processedProducts.length * selectedDestinations.length}
-                    </span>
-                  </div>
-                </div>
+              {activeCampaignId ? (
+                <BroadcastMonitor 
+                  campaignId={activeCampaignId}
+                  productsCount={processedProducts.length}
+                  groupsCount={selectedDestinations.length}
+                  onNewCampaign={() => {
+                    setActiveCampaignId(null);
+                    setIsSuccess(false);
+                    // O usuário decide se limpa a lista no "Reset" ou se continua
+                  }}
+                />
+              ) : (
+                <TactileCard className="p-8 border-none ring-1 ring-kinetic-orange/20 bg-gradient-to-br from-anthracite-surface to-deep-void shadow-skeuo-elevated sticky top-24">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-kinetic-orange mb-6 font-headline">
+                    Sumário Operacional
+                  </h3>
 
-                <KineticButton
-                  className="w-full h-14 font-black uppercase tracking-widest text-sm shadow-xl hover:scale-[1.02] transition-transform"
-                  disabled={
-                    isSending || processedProducts.length === 0 || selectedDestinations.length === 0
-                  }
-                  onClick={handleSend}
-                >
-                  {isSending ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-3 animate-spin" /> Transmitindo...
-                    </>
-                  ) : (
-                    <>
-                      <SendHorizonal className="w-4 h-4 mr-3" /> Iniciar Broadcast
-                    </>
-                  )}
-                </KineticButton>
+                  <div className="space-y-4 mb-8">
+                    <div className="flex justify-between items-center text-[10px] bg-white/5 p-3 rounded-xl border border-white/5">
+                      <span className="text-white/30 font-bold uppercase tracking-widest">Payloads Gerados:</span>
+                      <span className="font-black text-white/80 italic">{processedProducts.length} ITENS</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] bg-white/5 p-3 rounded-xl border border-white/5">
+                      <span className="text-white/30 font-bold uppercase tracking-widest">Endpoints (Canais):</span>
+                      <span className="font-black text-white/80 italic">{selectedDestinations.length} DESTINOS</span>
+                    </div>
+                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent w-full my-2" />
+                    <div className="flex justify-between items-center py-2 px-1">
+                      <span className="text-white/40 font-black uppercase tracking-[0.2em] text-[11px] font-headline italic">
+                        Carga de Envio:
+                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className="font-black text-kinetic-orange text-2xl shadow-glow-orange-intense font-headline italic leading-none">
+                          {processedProducts.length * selectedDestinations.length}
+                        </span>
+                        <span className="text-[8px] font-bold text-white/10 uppercase tracking-tighter mt-1">
+                          mensagens em fila
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="mt-6 flex items-start gap-3 p-4 bg-deep-void/50 rounded-xl border-none shadow-skeuo-pressed">
-                  <AlertCircle className="w-4 h-4 text-kinetic-orange flex-shrink-0 mt-0.5" />
-                  <p className="text-[9px] font-bold leading-relaxed uppercase text-white/30">
-                    ALERTA: A transmissão real depende das APIs externas. No modo atual, os registros são persistidos no Supabase.
-                  </p>
-                </div>
-              </TactileCard>
+                  <KineticButton
+                    className="w-full h-15 font-black uppercase tracking-[0.2em] text-[11px] font-headline italic rounded-2xl shadow-glow-orange-intense transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    disabled={
+                      isSending || processedProducts.length === 0 || selectedDestinations.length === 0
+                    }
+                    onClick={handleSend}
+                  >
+                    {isSending ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-3 animate-spin" /> Sincronizando Satélites...
+                      </>
+                    ) : (
+                      <>
+                        <SendHorizonal className="w-4 h-4 mr-3" /> ATIVAR BROADCAST
+                      </>
+                    )}
+                  </KineticButton>
+
+                  <div className="mt-6 flex items-start gap-3 p-4 bg-deep-void/50 rounded-xl border-none shadow-skeuo-pressed">
+                    <AlertCircle className="w-4 h-4 text-kinetic-orange flex-shrink-0 mt-0.5" />
+                    <p className="text-[9px] font-bold leading-relaxed uppercase text-white/30">
+                      ALERTA: A transmissão real depende das APIs externas. No modo atual, os registros são persistidos no Supabase.
+                    </p>
+                  </div>
+                </TactileCard>
+              )}
             </div>
           </div>
         </TabsContent>
@@ -800,6 +925,12 @@ export default function EnvioRapidoPage() {
           </TactileCard>
         </TabsContent>
       </Tabs>
-    </div>
+      <SaveListDialog 
+        open={isSaveListOpen}
+        onOpenChange={setIsSaveListOpen}
+        selectedGroupIds={selectedDestinations}
+        userId={user?.id as string}
+      />
+    </LayoutContainer>
   );
 }

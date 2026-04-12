@@ -12,7 +12,11 @@ export const destinationService = {
       .select(`
         *,
         destination_list_groups (
-          group_id
+          group:groups (
+            id,
+            name,
+            members_count
+          )
         )
       `)
       .eq('user_id', userId)
@@ -23,10 +27,17 @@ export const destinationService = {
       throw error;
     }
 
-    return (data || []).map(list => ({
-      ...list,
-      group_ids: list.destination_list_groups?.map((dlg: any) => dlg.group_id) || []
-    })) as DestinationList[];
+    return (data || []).map(list => {
+      const groups = list.destination_list_groups
+        ?.map((dlg: any) => dlg.group)
+        .filter(Boolean) || [];
+
+      return {
+        ...list,
+        groups,
+        group_ids: groups.map((g: any) => g.id)
+      };
+    }) as DestinationList[];
   },
 
   /**
@@ -42,10 +53,7 @@ export const destinationService = {
       .select()
       .single();
     
-    if (error) {
-      console.error('Error upserting destination list:', error);
-      throw error;
-    }
+    if (error) throw error;
     return data;
   },
 

@@ -46,41 +46,42 @@ export default function Topbar({ onMobileMenuToggle }: TopbarProps) {
 
   return (
     <header className="h-16 bg-deep-void/70 backdrop-blur-2xl flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 shadow-[0_1px_0_0_rgba(255,255,255,0.05)] glass-edge">
-      {/* Left — hamburger + search */}
-      <div className="flex items-center gap-6">
+      {/* Left — Command Controls */}
+      <div className="flex items-center gap-8">
         <button
-          className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+          className="md:hidden p-2 rounded-lg hover:bg-white/5 transition-colors"
           onClick={onMobileMenuToggle}
           aria-label="Abrir menu"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-5 h-5 text-white/50" />
         </button>
 
         <div className="relative hidden lg:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
           <input
             type="search"
-            placeholder="Buscar produtos, campanhas, templates..."
+            placeholder="Comando rápido..."
             className={cn(
-              'pl-9 pr-4 py-2 w-[320px] text-sm rounded-lg',
-              // Skeuo-pressed: inset shadow simulates cavity in the panel
-              'bg-[#0E0E11] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.5),inset_-1px_-1px_3px_rgba(255,255,255,0.02)]',
-              'border-none outline-none ring-0 text-white/80',
-              'placeholder:text-white/20',
-              'focus:ring-1 focus:ring-kinetic-orange/50 transition-all'
+              'pl-10 pr-4 py-2 w-[280px] text-[11px] rounded-xl font-medium tracking-wide uppercase',
+              // Skeuo-pressed: deeper inset shadow for material materialization
+              'bg-[#0E0E11] shadow-[inset_3px_3px_6px_rgba(0,0,0,0.6),inset_-1px_-1px_3px_rgba(255,255,255,0.01)]',
+              'border-none outline-none ring-0 text-white/60',
+              'placeholder:text-white/10 placeholder:font-black placeholder:tracking-[0.2em]',
+              'focus:ring-1 focus:ring-kinetic-orange/30 transition-all'
             )}
             aria-label="Buscar"
           />
         </div>
 
-        <div className="hidden md:flex items-center gap-6">
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            <span className="text-emerald-500">Status: Online</span>
+        {/* Telemetry Display — Stitch Rule: functional indicators */}
+        <div className="hidden xl:flex items-center gap-8">
+          <div className="flex items-center gap-2.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-500/80 italic">Status: Link_Operational</span>
           </div>
-          <div className="h-4 w-px bg-white/5" />
-          <div className="text-[10px] font-bold uppercase tracking-widest text-white/20">
-            Região: SA-East-1
+          <div className="flex items-center gap-2.5">
+             <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Region: SA_East_1</span>
           </div>
         </div>
       </div>

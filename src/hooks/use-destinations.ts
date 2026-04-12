@@ -1,12 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { destinationService } from '@/services/supabase/destination-service';
+import { groupService } from '@/services/supabase/group-service';
 import { DestinationList, DestinationListGroup } from '@/types/destination-list';
+import { Group } from '@/types/group';
 import { toast } from 'sonner';
 
 export function useDestinations(userId: string | undefined) {
   return useQuery({
     queryKey: ['destinations', userId],
     queryFn: () => userId ? destinationService.list(userId) : Promise.resolve([]),
+    enabled: !!userId,
+  });
+}
+
+export function useGroups(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['groups', userId],
+    queryFn: () => userId ? groupService.list(userId) : Promise.resolve([]),
     enabled: !!userId,
   });
 }

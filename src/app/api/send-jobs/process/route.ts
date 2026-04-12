@@ -15,6 +15,7 @@ function sleep(ms: number) {
 
 // ─── Rate Limit por Destino (Map em memória) ────────────────────────────────
 const destinationLastSent = new Map<string, number>();
+const channelLastSent = new Map<string, number>();
 
 function canSendToDestination(destination: string): boolean {
   const lastSent = destinationLastSent.get(destination);
@@ -24,6 +25,16 @@ function canSendToDestination(destination: string): boolean {
 
 function markDestinationSent(destination: string) {
   destinationLastSent.set(destination, Date.now());
+}
+
+function canSendFromChannel(channelId: string, cooldownMs: number): boolean {
+  const lastSent = channelLastSent.get(channelId);
+  if (!lastSent) return true;
+  return (Date.now() - lastSent) >= cooldownMs;
+}
+
+function markChannelSent(channelId: string) {
+  channelLastSent.set(channelId, Date.now());
 }
 
 // ─── Structured Logger ──────────────────────────────────────────────────────
@@ -55,20 +66,58 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // ─── 2. Buscar jobs pendentes ────────────────────────────────────────
-    // Batch size dinâmico: usa o menor entre os providers ativos
-    const defaultBatchSize = parseInt(process.env.SEND_BATCH_SIZE || '10', 10);
+    // ─── 2. Buscar jobs — Algoritmo Fila Justa (Round-Robin) ───────────
+    const CHANNELS_PER_BATCH = 15;
+    const JOBS_PER_CHANNEL = 3;
+    const globalBatchSize = parseInt(process.env.SEND_BATCH_SIZE || '15', 10);
 
-    const { data: jobs, error: fetchError } = await supabase
+    // Etapa A: Identificar canais ativos com jobs pendentes
+    // Limitação MVP: Deduplicação em memória para compensar falta de DISTINCT no PostgREST
+    const { data: recentPendingJobs, error: sampleError } = await supabase
       .from('send_jobs')
-      .select('*')
+      .select('channel_id')
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
-      .limit(defaultBatchSize);
+      .limit(100);
 
-    if (fetchError) {
-      throw new Error(`Failed to fetch jobs: ${fetchError.message}`);
+    if (sampleError) throw new Error(`Fetch sample error: ${sampleError.message}`);
+
+    const activeChannelIds = [...new Set((recentPendingJobs || []).map(j => j.channel_id))]
+      .slice(0, CHANNELS_PER_BATCH);
+
+    // Etapa B: Buscar fatias de cada canal para intercalar (Round-Robin)
+    const interleavedJobs: any[] = [];
+    const jobsByChannel: Record<string, any[]> = {};
+
+    for (const channelId of activeChannelIds) {
+      const { data: channelJobs } = await supabase
+        .from('send_jobs')
+        .select('*')
+        .eq('channel_id', channelId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true })
+        .limit(JOBS_PER_CHANNEL);
+      
+      if (channelJobs && channelJobs.length > 0) {
+        jobsByChannel[channelId] = channelJobs;
+      }
     }
+
+    // Etapa C: Intercalar jobs na lista final
+    let hasMore = true;
+    let index = 0;
+    while (hasMore && interleavedJobs.length < globalBatchSize) {
+      hasMore = false;
+      for (const channelId of activeChannelIds) {
+        if (jobsByChannel[channelId] && jobsByChannel[channelId][index]) {
+          interleavedJobs.push(jobsByChannel[channelId][index]);
+          hasMore = true;
+        }
+      }
+      index++;
+    }
+
+    const jobs = interleavedJobs;
 
     if (!jobs || jobs.length === 0) {
       return NextResponse.json({ processed: 0, message: 'No pending jobs' });
@@ -118,7 +167,7 @@ export async function POST(request: Request) {
       try {
         const { data: channel } = await supabase
           .from('channels')
-          .select('config, type')
+          .select('config, type, name')
           .eq('id', job.channel_id)
           .single();
 
@@ -126,19 +175,20 @@ export async function POST(request: Request) {
         const sessionStatus = channel?.config?.status;
 
         if (sessionStatus === 'session_lost' || sessionStatus === 'disconnected') {
+          const errorMsg = `Sessão Offline: O canal '${channel?.name || job.channel_id}' está desconectado. Reconecte no painel.`;
           await supabase
             .from('send_jobs')
             .update({
               status: 'failed',
               error_type: 'PERMANENT',
-              last_error: `Canal indisponível: ${sessionStatus}`,
+              last_error: errorMsg,
               try_count: job.try_count + 1,
               processed_at: new Date().toISOString()
             })
             .eq('id', job.id);
 
           logJob('ERROR', job.id, { action: 'channel_unavailable', channelType, status: sessionStatus });
-          results.push({ jobId: job.id, status: 'failed', error: `session_${sessionStatus}`, errorType: 'PERMANENT' });
+          results.push({ jobId: job.id, status: 'failed', error: 'session_lost', errorType: 'PERMANENT' });
           continue;
         }
 
@@ -184,8 +234,22 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // ─── 7. Enviar via Provider ────────────────────────────────────────
+      // ─── 7. Pacing por Canal (Isolado) ──────────────────────────────────
       const provider = getProvider(channelType);
+      
+      if (!canSendFromChannel(job.channel_id, provider.getCooldownMs())) {
+        // Devolve pra fila para processar em outra oportunidade ou próxima rodada
+        await supabase
+          .from('send_jobs')
+          .update({ status: 'pending', updated_at: new Date().toISOString() })
+          .eq('id', job.id);
+
+        logJob('INFO', job.id, { action: 'channel_pacing', channelId: job.channel_id });
+        results.push({ jobId: job.id, status: 'pacing_skip' });
+        continue;
+      }
+
+      // ─── 8. Enviar via Provider ────────────────────────────────────────
       const formattedDestination = provider.formatDestination(job.destination);
       const messageText = job.message_body || '';
 
@@ -201,7 +265,9 @@ export async function POST(request: Request) {
 
       // ─── 8. Processar resultado ────────────────────────────────────────
       if (result.success) {
+        markChannelSent(job.channel_id);
         markDestinationSent(job.destination);
+        // ... resta do sucesso ...
 
         await supabase
           .from('send_jobs')
@@ -289,7 +355,8 @@ export async function POST(request: Request) {
       }
 
       // ─── 10. Cooldown por provider ─────────────────────────────────────
-      await sleep(provider.getCooldownMs());
+      // Removido Global Sleep fixo para permitir processamento paralelo de canais
+      // Pacing agora é controlado individualmente por canSendFromChannel
     }
 
     return NextResponse.json({
