@@ -41,7 +41,7 @@ Forbidden to persist unless explicitly approved:
 
 ## Security rules
 - Never expose Wasender secrets or session keys to the frontend.
-- Never store session secrets or `webhook_secret` in `channels.config`.
+- Backend manages all credentials (Zero-User-Auth).
 - Prefer Supabase Vault for secrets. If not possible, use a dedicated secrets table with strict RLS or a secure isolated structure.
 - Validate webhook signatures/secrets from Wasender in the `POST /api/webhooks/wasender` route.
 - Never hardcode credentials, secrets, tokens, or test keys.

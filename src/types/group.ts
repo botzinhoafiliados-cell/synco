@@ -35,6 +35,12 @@ export interface Group {
     remote_id?: string | null;
     name: string;
     description?: string;
+    avatar_url?: string | null;
+    invite_link?: string | null;
+    admin_count?: number;
+    permissions?: any;
+    owner?: string | null;
+    remote_created_at?: string;
     status: GroupStatus;
     is_source: boolean;
     is_destination: boolean;

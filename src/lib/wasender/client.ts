@@ -9,11 +9,34 @@ export class WasenderClient {
     return process.env.WASENDER_PAT;
   }
 
-  private static get headers() {
+  private static getHeaders(apiKey?: string) {
+    let finalKey = '';
+    let source = 'NONE';
+
+    // 1. Prioridade: Chave da Sessão (se fornecida e válida)
+    if (apiKey && !apiKey.includes(':')) {
+      finalKey = apiKey;
+      source = 'SESSION';
+    } else if (apiKey && apiKey.includes(':')) {
+      console.warn(`[WASENDER-AUTH] [${new Date().toISOString()}] Chave de sessão suspeita (formato Telegram). Ignorando e tentando fallback.`);
+    }
+
+    // 2. Fallback: PAT Global (se a chave da sessão falhou ou não existe)
+    if (!finalKey && this.pat) {
+      finalKey = this.pat;
+      source = 'GLOBAL_PAT';
+    }
+
+    if (!finalKey) {
+      console.error(`[WASENDER-AUTH] [${new Date().toISOString()}] Nenhuma credencial válida encontrada (Session ou PAT).`);
+    } else {
+      console.log(`[WASENDER-AUTH] [${new Date().toISOString()}] Utilizando credencial: ${source}`);
+    }
+
     return {
       'Content-Type': 'application/json',
-      'X-Api-Key': this.pat || '',
-      'Authorization': `Bearer ${this.pat || ''}`
+      'X-Api-Key': finalKey,
+      'Authorization': `Bearer ${finalKey}`
     };
   }
 
@@ -46,7 +69,7 @@ export class WasenderClient {
 
     const res = await fetch(`${this.baseURL}/whatsapp-sessions`, {
       method: 'POST',
-      headers: this.headers,
+      headers: this.getHeaders(),
       body: JSON.stringify(body)
     });
     
@@ -60,7 +83,7 @@ export class WasenderClient {
   static async connectSession(sessionId: string) {
     const res = await fetch(`${this.baseURL}/whatsapp-sessions/${sessionId}/connect`, {
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders()
     });
     
     if (!res.ok) {
@@ -73,7 +96,7 @@ export class WasenderClient {
   static async getStatus(sessionId: string) {
     const res = await fetch(`${this.baseURL}/whatsapp-sessions/${sessionId}`, {
       method: 'GET',
-      headers: this.headers
+      headers: this.getHeaders()
     });
     
     if (!res.ok) {
@@ -86,7 +109,7 @@ export class WasenderClient {
   static async getQrCode(sessionId: string) {
     const res = await fetch(`${this.baseURL}/whatsapp-sessions/${sessionId}/qrcode`, {
       method: 'GET',
-      headers: this.headers
+      headers: this.getHeaders()
     });
     
     if (!res.ok) {
@@ -96,18 +119,100 @@ export class WasenderClient {
     return res.json(); 
   }
 
+  static async getSession(sessionId: string) {
+    const res = await fetch(`${this.baseURL}/whatsapp-sessions/${sessionId}`, {
+      method: 'GET',
+      headers: this.getHeaders() // Usa o PAT global por padrão
+    });
+    
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Failed to get session details: ${err}`);
+    }
+    return res.json();
+  }
+
+  static async restartSession(sessionId: string) {
+    const res = await fetch(`${this.baseURL}/whatsapp-sessions/${sessionId}/restart`, {
+      method: 'POST',
+      headers: this.getHeaders() // Usa o PAT global
+    });
+    
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Failed to restart session: ${err}`);
+    }
+    return res.json();
+  }
+
   // ─── Groups ─────────────────────────────────────────────────────────────
 
-  static async getGroups(sessionId: string) {
+  static async getGroups(sessionId: string, apiKey?: string) {
     const res = await fetch(`${this.baseURL}/groups?session_id=${sessionId}`, {
       method: 'GET',
-      headers: this.headers
+      headers: this.getHeaders(apiKey)
     });
     
     if (!res.ok) {
         const err = await res.text();
         throw new Error(`Failed to get groups: ${err}`);
     }
+    return res.json();
+  }
+
+  static async getGroupMetadata(sessionId: string, groupId: string, apiKey?: string) {
+    const res = await fetch(`${this.baseURL}/groups/${groupId}/metadata?session_id=${sessionId}`, {
+      method: 'GET',
+      headers: this.getHeaders(apiKey)
+    });
+    
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Failed to get group metadata: ${err}`);
+    }
+    return res.json();
+  }
+
+  static async getGroupParticipants(sessionId: string, groupId: string, apiKey?: string) {
+    const res = await fetch(`${this.baseURL}/groups/${groupId}/participants?session_id=${sessionId}`, {
+      method: 'GET',
+      headers: this.getHeaders(apiKey)
+    });
+    
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Failed to get participants: ${err}`);
+    }
+    return res.json();
+  }
+
+  static async getGroupPicture(sessionId: string, groupId: string, apiKey?: string) {
+    const res = await fetch(`${this.baseURL}/groups/${groupId}/picture?session_id=${sessionId}`, {
+      method: 'GET',
+      headers: this.getHeaders(apiKey)
+    });
+    
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  static async getGroupInviteLink(sessionId: string, groupId: string, apiKey?: string) {
+    const res = await fetch(`${this.baseURL}/groups/${groupId}/invite-link?session_id=${sessionId}`, {
+      method: 'GET',
+      headers: this.getHeaders(apiKey)
+    });
+    
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  static async getProfilePicture(sessionId: string, jid: string, apiKey?: string) {
+    const res = await fetch(`${this.baseURL}/profile-picture?session_id=${sessionId}&jid=${jid}`, {
+      method: 'GET',
+      headers: this.getHeaders(apiKey)
+    });
+    
+    if (!res.ok) return null; // Avatares podem falhar suavemente
     return res.json();
   }
 

@@ -29,40 +29,69 @@ export const groupService = {
   },
 
   /**
-   * Cria ou atualiza um grupo
+   * Busca detalhes de um único grupo
    */
-  async upsert(group: Partial<Group> & { user_id: string; channel_id: string }): Promise<Group> {
+  async getById(id: string, userId: string): Promise<Group | null> {
     const supabase = createClient();
-    // Remove campos computados ou de visualização antes de salvar
-    const { channel_name, sends_received, ...payload } = group as any;
-    
     const { data, error } = await supabase
       .from('groups')
-      .upsert(payload)
-      .select()
+      .select(`
+        *,
+        channels (
+          name, 
+          config,
+          channel_secrets (session_api_key)
+        )
+      `)
+      .eq('id', id)
+      .eq('user_id', userId)
       .single();
     
-    if (error) {
-      console.error('Error upserting group:', error);
-      throw error;
-    }
-    return data;
+    if (error) return null;
+
+    const channel = (data as any).channels;
+    const sessionKey = channel?.channel_secrets?.[0]?.session_api_key;
+    
+    // Uma chave é válida se existir e não parecer ser de Telegram (sem ':')
+    const hasValidKey = !!sessionKey && !sessionKey.includes(':');
+
+    return {
+      ...data,
+      channel_name: channel?.name || 'N/A',
+      channel_config: channel?.config || {},
+      has_valid_key: hasValidKey
+    } as Group & { has_valid_key: boolean };
   },
 
   /**
-   * Remove um grupo (respeitando RLS via user_id)
+   * Lista participantes de um grupo
    */
-  async delete(id: string, userId: string): Promise<void> {
+  async getParticipants(groupId: string) {
     const supabase = createClient();
-    const { error } = await supabase
-      .from('groups')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
+    const { data, error } = await supabase
+      .from('group_participants')
+      .select(`
+        role,
+        last_synced_at,
+        contacts (*)
+      `)
+      .eq('group_id', groupId);
     
-    if (error) {
-      console.error('Error deleting group:', error);
-      throw error;
-    }
+    if (error) throw error;
+    return data.map(p => ({
+       role: p.role,
+       last_synced_at: p.last_synced_at,
+       ...(p.contacts as any)
+    }));
+  },
+
+  /**
+   * Dispara a sincronização profunda via API
+   */
+  async triggerDeepSync(groupId: string) {
+    const res = await fetch(`/api/wasender/groups/${groupId}/details`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Falha na sincronização profunda');
+    return data;
   }
 };
