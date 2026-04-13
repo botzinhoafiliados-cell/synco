@@ -2,65 +2,58 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGroups, useCreateGroup, useUpdateGroup, useDeleteGroup } from '@/hooks/use-groups';
+import { useGroups } from '@/hooks/use-groups';
 import { useChannels } from '@/hooks/use-channels';
 import { GroupList } from '@/components/groups/GroupList';
-import { GroupDialog } from '@/components/groups/GroupDialog';
-import { Group } from '@/types/group';
 import { Button } from '@/components/ui/button';
-import { Plus, Users, Search, RefreshCw, Radio } from 'lucide-react';
+import { Users, Search, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import LayoutContainer from '@/components/layout/LayoutContainer';
 import PageHeader from '@/components/shared/PageHeader';
 import { KineticButton } from '@/components/ui/KineticButton';
+import { toast } from 'sonner';
 
 export default function GruposPage() {
   const { user } = useAuth();
   const { data: groups, isLoading: isLoadingGroups, isError: isErrorGroups, refetch: refetchGroups } = useGroups(user?.id);
   const { data: channels, isLoading: isLoadingChannels } = useChannels(user?.id);
   
-  const createGroup = useCreateGroup();
-  const updateGroup = useUpdateGroup();
-  const deleteGroup = useDeleteGroup();
-
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleCreate = () => {
-    setEditingGroup(null);
-    setIsDialogOpen(true);
-  };
-
-  const handleEdit = (group: Group) => {
-    setEditingGroup(group);
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = (group: Group) => {
-    if (window.confirm(`Tem certeza que deseja excluir o grupo "${group.name}"?`)) {
-      deleteGroup.mutate({ id: group.id, user_id: user?.id as string });
+  const handleSyncAll = async () => {
+    if (!channels || channels.length === 0) {
+      toast.error('Nenhum canal ativo para sincronizar.');
+      return;
     }
-  };
 
-  const handleSubmit = (data: any) => {
-    if (editingGroup) {
-      updateGroup.mutate({
-        id: editingGroup.id,
-        user_id: user?.id as string,
-        ...data,
-      }, {
-        onSuccess: () => setIsDialogOpen(false)
-      });
-    } else {
-      createGroup.mutate({
-        user_id: user?.id as string,
-        ...data,
-      }, {
-        onSuccess: () => setIsDialogOpen(false)
-      });
-    }
+    setIsSyncingAll(true);
+    let successCount = 0;
+
+    toast.promise(
+      Promise.all(channels.map(async (channel) => {
+        try {
+          const res = await fetch('/api/wasender/groups/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channel_id: channel.id })
+          });
+          if (res.ok) successCount++;
+        } catch (e) {
+          console.error(`Erro ao sincronizar canal ${channel.name}:`, e);
+        }
+      })),
+      {
+        loading: 'Sincronizando malha de todos os canais...',
+        success: () => {
+          setIsSyncingAll(false);
+          refetchGroups();
+          return `Sincronização concluída! ${successCount} canais processados.`;
+        },
+        error: 'Erro parcial na sincronização.'
+      }
+    );
   };
 
   const filteredGroups = groups?.filter(group => 
@@ -74,11 +67,16 @@ export default function GruposPage() {
     <LayoutContainer type="operational">
       <PageHeader 
         title="Grupos"
-        description="Gestão de vetores de destino. Organize seus grupos por canal e categoria operacional."
+        description="Espelho operacional da malha de grupos sincronizada via WasenderAPI."
         icon={<Users size={24} />}
         actions={
-          <KineticButton onClick={handleCreate} className="gap-2 px-6 h-12">
-            <Plus size={18} /> Novo Grupo
+          <KineticButton 
+            onClick={handleSyncAll} 
+            disabled={isSyncingAll || isLoadingChannels}
+            className="gap-2 px-6 h-12"
+          >
+            <RefreshCw size={18} className={isSyncingAll ? "animate-spin" : ""} />
+            Sincronizar Canais
           </KineticButton>
         }
       />
@@ -118,19 +116,9 @@ export default function GruposPage() {
       ) : (
         <GroupList 
           groups={filteredGroups || []} 
-          channels={channels || []}
-          onEdit={handleEdit} 
-          onDelete={handleDelete} 
+          isLoading={isLoading}
         />
       )}
-
-      <GroupDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSubmit={handleSubmit}
-        initialData={editingGroup}
-        isSubmitting={createGroup.isPending || updateGroup.isPending}
-      />
     </LayoutContainer>
   );
 }

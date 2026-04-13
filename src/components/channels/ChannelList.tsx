@@ -17,6 +17,8 @@ import { ChannelTelegramConnectDialog } from './ChannelTelegramConnectDialog';
 import { ChannelWasenderConnectDialog } from './ChannelWasenderConnectDialog';
 import { toast } from 'sonner';
 import { KineticButton } from '@/components/ui/KineticButton';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ChannelListProps {
   channels: Channel[];
@@ -25,24 +27,41 @@ interface ChannelListProps {
 }
 
 export function ChannelList({ channels, onEdit, onDelete }: ChannelListProps) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [connectChannel, setConnectChannel] = useState<Channel | null>(null);
   const [connectTelegramChannel, setConnectTelegramChannel] = useState<Channel | null>(null);
   const [isSyncingId, setIsSyncingId] = useState<string | null>(null);
 
-  const handleSyncGroups = async (channelId: string) => {
+  const handleSyncGroups = async (channelId: string, forceRestart = false) => {
     try {
        setIsSyncingId(channelId);
+       
+       if (forceRestart) {
+         toast.info("Reinicializando sessão... Aguarde 5 segundos.");
+       }
+
        const res = await fetch('/api/wasender/groups/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ channel_id: channelId })
+          body: JSON.stringify({ channel_id: channelId, force_restart: forceRestart })
        });
+       
        const data = await res.json();
        if (!res.ok) throw new Error(data.error);
        
-       toast.success(`Sincronização concluída! ${data.synced} grupos retornados.`);
+       // Invalida a query de grupos para atualizar a UI imediatamente
+       if (user?.id) {
+         queryClient.invalidateQueries({ queryKey: ['groups', user.id] });
+       }
+       
+       if (data.new_groups > 0) {
+         toast.success(data.message);
+       } else {
+         toast.info(data.message);
+       }
     } catch (e: any) {
-       toast.error(`Falha ao sincronizar grupos: ${e.message}`);
+       toast.error(`Falha ao sincronizar: ${e.message}`);
     } finally {
        setIsSyncingId(null);
     }
@@ -132,6 +151,15 @@ export function ChannelList({ channels, onEdit, onDelete }: ChannelListProps) {
                         <DropdownMenuItem onClick={() => onEdit(channel)} className="gap-2 cursor-pointer text-[11px] font-bold uppercase tracking-widest text-white/60 focus:text-kinetic-orange">
                           <Edit size={14} /> EDITAR CANAL
                         </DropdownMenuItem>
+                        
+                        {isWhatsApp && isConnected && (
+                          <DropdownMenuItem 
+                            onClick={() => handleSyncGroups(channel.id, true)} 
+                            className="gap-2 cursor-pointer text-[11px] font-bold uppercase tracking-widest text-kinetic-orange focus:text-kinetic-orange"
+                          >
+                            <Zap size={14} /> FORÇAR ATUALIZAÇÃO SESSÃO
+                          </DropdownMenuItem>
+                        )}
                         
                         <DropdownMenuSeparator className="bg-white/5" />
                         

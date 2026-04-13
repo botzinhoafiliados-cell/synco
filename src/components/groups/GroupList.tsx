@@ -1,125 +1,110 @@
 'use client';
 
 import React from 'react';
-import { Group, Channel } from '@/types/group';
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { TactileCard } from '@/components/ui/TactileCard';
-import { MoreVertical, Edit, Trash2, Hash, MessageCircle, Send, Users } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+  Users, 
+  ShieldCheck, 
+  ExternalLink, 
+  MoreVertical,
+  Link as LinkIcon
+} from 'lucide-react';
+import { Group } from '@/types/group';
 import { KineticButton } from '@/components/ui/KineticButton';
+import { TactileCard } from '@/components/ui/TactileCard';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import Link from 'next/link';
 
 interface GroupListProps {
   groups: Group[];
-  channels: Channel[];
-  onEdit: (group: Group) => void;
-  onDelete: (group: Group) => void;
+  isLoading?: boolean;
 }
 
-export function GroupList({ groups, channels, onEdit, onDelete }: GroupListProps) {
+export function GroupList({ groups, isLoading }: GroupListProps) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="h-44 rounded-[32px] bg-anthracite-surface/50 border border-white/5 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
   if (groups.length === 0) {
     return (
-      <div className="col-span-full py-24 text-center bg-white/5 rounded-[40px] border-2 border-dashed border-white/5 flex flex-col items-center gap-6 animate-in fade-in duration-700">
-         <div className="p-6 bg-white/5 rounded-full shadow-skeuo-flat border border-white/5">
-            <Users size={48} className="text-white/10" />
-         </div>
-         <div className="space-y-1">
-            <p className="text-white/80 font-black uppercase tracking-[0.2em] text-sm italic font-headline">Nenhum Vetor Encontrado</p>
-            <p className="text-white/20 text-[10px] font-medium uppercase tracking-widest">Sua malha operacional de grupos está vazia.</p>
-         </div>
+      <div className="flex flex-col items-center justify-center p-12 bg-white/5 rounded-[40px] border-2 border-dashed border-white/5">
+        <Users className="w-12 h-12 text-white/10 mb-4" />
+        <p className="text-white/40 font-medium">Nenhum grupo encontrado na malha.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {groups.map((group) => {
-        const channel = channels.find(c => c.id === group.channel_id);
-        const isWhatsApp = channel?.type === 'whatsapp';
-        
-        return (
-          <TactileCard key={group.id} className="group overflow-hidden border-white/5 hover:border-kinetic-orange/20 transition-all duration-500">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2.5 bg-white/5 rounded-xl border border-white/10 shadow-skeuo-flat ${isWhatsApp ? 'group-hover:border-emerald-500/20' : 'group-hover:border-blue-500/20'} transition-colors`}>
-                    {isWhatsApp ? (
-                      <MessageCircle size={20} className="text-emerald-500" />
-                    ) : (
-                      <Send size={20} className="text-blue-500" />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-black text-white/90 uppercase tracking-tight italic text-base font-headline line-clamp-1">
-                      {group.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                       <Badge variant="outline" className="text-[8px] font-black uppercase border-white/10 text-white/40 h-4">
-                         {channel?.name || 'Vetor Órfão'}
-                       </Badge>
-                    </div>
-                  </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {groups.map((group) => (
+        <TactileCard key={group.id} className="p-5 group hover:scale-[1.01] transition-all duration-300">
+          <div className="flex items-start gap-4 mb-4">
+            {/* Avatar do Grupo */}
+            <Avatar className="w-14 h-14 rounded-2xl shadow-skeuo-flat border border-white/5 flex-shrink-0">
+              <AvatarImage src={group.avatar_url || ''} alt={group.name} className="object-cover" />
+              <AvatarFallback className="bg-deep-void text-white/30 text-lg font-black italic">
+                {group.name.substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+
+            {/* Informações Principais */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-0.5">
+                <h3 className="font-black text-white/90 truncate pr-2 tracking-tight">{group.name}</h3>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={`w-2 h-2 rounded-full shadow-sm ${group.status === 'active' ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-red-500 shadow-red-500/50'}`} />
                 </div>
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg bg-white/5 border border-white/5 opacity-40 group-hover:opacity-100 transition-opacity">
-                      <MoreVertical size={14} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[180px] bg-anthracite-surface border-white/5 shadow-skeuo-elevated">
-                    <DropdownMenuItem onClick={() => onEdit(group)} className="gap-2 cursor-pointer text-[11px] font-bold uppercase tracking-widest text-white/60 focus:text-kinetic-orange">
-                      <Edit size={14} /> EDITAR
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => onDelete(group)} 
-                      className="text-red-500 focus:text-red-400 focus:bg-red-500/10 gap-2 cursor-pointer text-[11px] font-bold uppercase tracking-widest"
-                    >
-                      <Trash2 size={14} /> EXCLUIR
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
+              
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 truncate">
+                {group.channel_name || 'Desconhecido'}
+              </p>
 
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/[0.02] shadow-skeuo-pressed">
-                 <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                       <p className="text-[9px] font-black uppercase text-white/20 tracking-widest">Capacidade / Membros</p>
-                       <p className="text-xs font-bold text-white/60 italic">{group.members_count || '--'} INTEGRANTES</p>
-                    </div>
-                    <Badge className="bg-emerald-500 shadow-glow-orange-intense text-white border-none font-bold text-[8px] rounded-full h-4">
-                      OPERANTE
-                    </Badge>
-                 </div>
-              </div>
-
-              <div className="flex items-center justify-end mt-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="h-8 text-[9px] font-black uppercase tracking-widest gap-2 opacity-30 hover:opacity-100 transition-opacity"
-                  onClick={() => onEdit(group)}
-                >
-                  CONFIGURAR VETOR <Edit size={12} />
-                </Button>
+              {/* Badges de Malha */}
+              <div className="flex items-center gap-2.5 mt-2.5">
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-deep-void/50 border border-white/5 shadow-skeuo-pressed">
+                  <Users className="w-3 h-3 text-kinetic-orange" />
+                  <span className="text-[10px] font-black text-white/70">{group.members_count}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-deep-void/50 border border-white/5 shadow-skeuo-pressed">
+                  <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                  <span className="text-[10px] font-black text-white/70">{group.admin_count || 0}</span>
+                </div>
               </div>
             </div>
-          </TactileCard>
-        );
-      })}
+          </div>
+
+          {/* Footer de Ações Táteis */}
+          <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+               {group.is_source && (
+                 <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-kinetic-orange/10 border border-kinetic-orange/20">
+                   <div className="w-1 h-1 rounded-full bg-kinetic-orange animate-pulse" />
+                   <span className="text-[9px] font-black uppercase tracking-wider text-kinetic-orange">Fonte</span>
+                 </div>
+               )}
+               {group.is_destination && (
+                 <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                   <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                   <span className="text-[9px] font-black uppercase tracking-wider text-emerald-500">Destino</span>
+                 </div>
+               )}
+            </div>
+
+            <Link href={`/grupos/${group.id}`}>
+              <KineticButton className="h-9 py-0 px-4 bg-transparent shadow-none hover:bg-white/10 flex items-center gap-2 transition-all">
+                <span className="text-[10px] font-black uppercase tracking-widest">Detalhes</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </KineticButton>
+            </Link>
+          </div>
+        </TactileCard>
+      ))}
     </div>
   );
 }

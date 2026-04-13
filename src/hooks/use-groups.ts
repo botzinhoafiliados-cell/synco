@@ -11,53 +11,44 @@ export function useGroups(userId: string | undefined) {
   });
 }
 
-export function useCreateGroup() {
+export function useGroupDetail(groupId: string, userId: string | undefined) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (group: Omit<Group, 'id' | 'created_at' | 'updated_at'>) => 
-      groupService.upsert(group as any),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['groups', variables.user_id] });
-      toast.success('Grupo criado com sucesso!');
+  // 1. Query para os metadados do grupo
+  const groupQuery = useQuery({
+    queryKey: ['group', groupId],
+    queryFn: () => userId ? groupService.getById(groupId, userId) : Promise.resolve(null),
+    enabled: !!userId && !!groupId,
+  });
+
+  // 2. Query para os participantes
+  const participantsQuery = useQuery({
+    queryKey: ['group-participants', groupId],
+    queryFn: () => groupService.getParticipants(groupId),
+    enabled: !!groupId,
+  });
+
+  // 3. Mutação para disparar o Deep Sync
+  const syncMutation = useMutation({
+    mutationFn: () => groupService.triggerDeepSync(groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['group-participants', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['groups', userId] });
+      toast.success('Malha do grupo sincronizada com sucesso!');
     },
-    onError: (error) => {
-      console.error('Error creating group:', error);
-      toast.error('Erro ao criar grupo.');
+    onError: (error: any) => {
+      console.error('Error syncing group mesh:', error);
+      toast.error(`Falha ao sincronizar malha: ${error.message}`);
     }
   });
-}
 
-export function useUpdateGroup() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, ...group }: Partial<Group> & { id: string, user_id: string }) => 
-      groupService.upsert({ id, ...group } as any),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['groups', variables.user_id] });
-      toast.success('Grupo atualizado com sucesso!');
-    },
-    onError: (error) => {
-      console.error('Error updating group:', error);
-      toast.error('Erro ao atualizar grupo.');
-    }
-  });
-}
-
-export function useDeleteGroup() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, user_id }: { id: string, user_id: string }) => 
-      groupService.delete(id, user_id),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['groups', variables.user_id] });
-      toast.success('Grupo excluído com sucesso!');
-    },
-    onError: (error) => {
-      console.error('Error deleting group:', error);
-      toast.error('Erro ao excluir grupo.');
-    }
-  });
+  return {
+    group: groupQuery.data,
+    participants: participantsQuery.data || [],
+    isLoading: groupQuery.isLoading || participantsQuery.isLoading,
+    isSyncing: syncMutation.isPending,
+    sync: syncMutation.mutate,
+    isError: groupQuery.isError || participantsQuery.isError
+  };
 }
